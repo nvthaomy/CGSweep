@@ -8,10 +8,15 @@ import sim, pickleTraj
 
 print sim
 
+os.system('rm -rf pylib\n')
+os.system('rm *pyc\n')
+os.system('rm tmp*\n')
+os.system('rm *pickle\n')
+os.system('rm parse*\n')
 
 Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
-DOP = 50
+DOP = 24
 MappingRatio = CGMap_DUMMY
 Pressure_List = [0.2852833,0.24216]
 StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]  #HERE may need to be more gradual for stability
@@ -251,6 +256,9 @@ for index, NMol in enumerate(NMol_List):
     # Perform atom mapping for specific system
     MapTemp = sim.atommap.PosMap()
     print SysTemp.Name
+    print 'NMol: {}'.format(SysTemp.NMol)
+    print 'NAtom: {}'.format(SysTemp.NAtom)
+    print 'NDOF: {}'.format(SysTemp.NDOF)
     for (i, a) in enumerate(SysTemp.Atom):
         MapTemp += [sim.atommap.AtomMap(Atoms1 = i, Atom2 = a)]
     
@@ -295,7 +303,7 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-        W = 3*NMol - 3*Press*BoxL**3
+	W = SysTemp.NDOF - 3*Press*BoxL**3
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
