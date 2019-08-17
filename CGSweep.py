@@ -175,14 +175,14 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
     sys.stdout.write('Submitting job')
     call_1 = "qsub submit.sh"
 
-    #print(call_1)
-    #p1 = prcs.Popen(call_1, stdout=prcs.PIPE, shell=True)	
-    #(output, err) = p1.communicate()
-    #p_status = p1.wait()
-    #print("{}".format(err))
+    print(call_1)
+    p1 = prcs.Popen(call_1, stdout=prcs.PIPE, shell=True)	
+    (output, err) = p1.communicate()
+    p_status = p1.wait()
+    print("{}".format(err))
 
-    #with open("cgsweep_submit.log",'w') as logout:
-    #    logout.write(output.decode("utf-8"))
+    with open("cgsweep_submit.log",'w') as logout:
+        logout.write(output.decode("utf-8"))
     
     # Move backup one directory
     os.chdir("..")

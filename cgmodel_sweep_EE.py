@@ -14,10 +14,10 @@ os.system('rm tmp*\n')
 os.system('rm *pickle\n')
 os.system('rm parse*\n')
 
-Traj_List = ['AAtraj_np04.lammpstrj']
-NMol_List = [4]
-DOP = 24
-MappingRatio = 3
+Traj_List = TrajList_DUMMY
+NMol_List = NMol_DUMMY
+DOP = DOP_DUMMY
+MappingRatio = CGMap_DUMMY
 Pressure_List = [0.2852833,0.24216]
 StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]  #HERE may need to be more gradual for stability
 
@@ -26,16 +26,16 @@ SrelName = "CG_run"
 # default settings
 sim.export.lammps.InnerCutoff = 0.00001
 sim.export.lammps.LammpsExec = 'lmp_omp'
-sim.export.lammps.OMP_NumThread = 1
+sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
 # md iterations
 StepsEquil = 10000
 StepsProd = 1000000
 StepsStride = 10
-RunStepScaleList = [1]
-GaussMethod = 1
+RunStepScaleList = RunStepScaleList_DUMMY
+GaussMethod = GaussMethod_DUMMY
 
-Cut = 10.0
+Cut = Cut_DUMMY
 FixBondDist0 = True
 PBondDist0 = 0. # For zero centered bonds set to 0.
 UseLocalDensity = False
@@ -45,12 +45,12 @@ LDKnots    = 10
 # N.S. TODO:
 # Change how Gaussian potentials are handled
 
-NumberGaussians = 1
-ScaleRuns = True
-RunStepScaleList = [1]
+NumberGaussians = NumberGaussians_DUMMY
+ScaleRuns = ScaleRuns_DUMMY
+RunStepScaleList = RunStepScaleList_DUMMY
 
-RunSpline = True
-SplineKnots = 8
+RunSpline = RunSpline_DUMMY
+SplineKnots = SplineKnots_DUMMY
 SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt. 
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
 # N.S. TODO:
@@ -62,7 +62,7 @@ UseWPenalty = False
 UseLammps = True # Should you this for now
 UseSim = False
 WriteTraj = True
-UseExpandedEnsemble = False
+UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
 RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
 # outputs LAMMPS .dcd trajectory (this requires modification of the lammps.py export in sim. 
 
