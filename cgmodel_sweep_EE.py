@@ -229,8 +229,10 @@ for index, NMol in enumerate(NMol_List):
                 this_Map = sim.atommap.AtomMap(Atoms1 = Atoms1, Atom2 = Atom2)
                 Map += [this_Map]
             monomer_count += CGDOP*MappingRatio
-    Traj_Temp = sim.traj.Lammps(Traj)
-    BoxL = Traj_Temp.Init_BoxL[0]
+    #Traj_Temp = sim.traj.Lammps(Traj)
+    #BoxL = Traj_Temp.Init_BoxL[0]
+    Traj_Temp = pickleTraj(Traj_List[index])
+    BoxL = Traj_Temp.FrameData['BoxL'][0] 
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
