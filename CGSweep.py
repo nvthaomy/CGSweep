@@ -4,23 +4,23 @@ import scipy as sp
 import scipy.stats
 import math
 import subprocess as prcs
-import os
+import os, sys
 from shutil import copyfile
 
 ''' USER-INPUT '''
-TrajFileDir = 'Trajectories_EE_T075'
+TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'T_075_EE_Yes_Option1_LAMMPS_Yes_TESTRUNS'
-NumberThreads = 2
-JobRunTime = '120:00:00'
-SplineKnots = 7
-Cut = 25
-NMolList = [02,20] # Needs to be the list of # molecules if doing Exp. Ens. 
+SpecialName     = 'TESTRUNS'
+NumberThreads = 1
+JobRunTime = '700:00:00'
+SplineKnots = 8
+Cut = 10.
+NMolList = [[1,4]] # Needs to be the list of # molecules if doing Exp. Ens. 
 ScaleRuns = True 
 RunStepScaleList = '[1.1,1]' # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer
 NumberGaussianBasisSets = [1,2,3]
-CG_Mappings = [2,5,10]
+CG_Mappings = [3,1]
 RunSpline = True
 RunGauss = False
 #N.S. TODO: Add in option for EE runs
@@ -31,23 +31,8 @@ GaussMethod = 1
 ''' Specify the trajectory list to use ''' 
 # IF using ExpEnsemble = True need to make TrajList a list of list!
 
-#TrajList = ['CG_AtomPos_np_02_T_025','CG_AtomPos_np_20_T_025','CG_AtomPos_np_02_T_075','CG_AtomPos_np_20_T_075','CG_AtomPos_np_02_T_120','CG_AtomPos_np_20_T_120',
-#            'CG_AtomPos_np_02_T_160','CG_AtomPos_np_20_T_160','CG_AtomPos_np_02_T_200','CG_AtomPos_np_20_T_200','CG_AtomPos_np_02_T_240','CG_AtomPos_np_20_T_240',
-#            'CG_AtomPos_np_02_T_280','CG_AtomPos_np_20_T_280','CG_AtomPos_np_02_T_320','CG_AtomPos_np_20_T_320']
-#TrajList = ['CG_AtomPos_np_20_T_025','CG_AtomPos_np_20_T_075','CG_AtomPos_np_20_T_120',
-#            'CG_AtomPos_np_20_T_160','CG_AtomPos_np_20_T_200','CG_AtomPos_np_20_T_240',
-#            'CG_AtomPos_np_20_T_280','CG_AtomPos_np_20_T_320']
-#TrajList = ['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120', 'CG_AtomPos_np_40_T_120']
-#TrajList = ['CG_AtomPos_np_02_T_160', 'CG_AtomPos_np_20_T_160']
-#TrajList = ['CG_AtomPos_np_02_T_200', 'CG_AtomPos_np_20_T_200']
-#TrajList = ['CG_AtomPos_np_02_T_240', 'CG_AtomPos_np_20_T_240']
-#TrajList = ['CG_AtomPos_np_02_T_280', 'CG_AtomPos_np_20_T_280', 'CG_AtomPos_np_40_T_280']
-
-#TrajList = ['CG_AtomPos_np_02_T_025', 'CG_AtomPos_np_20_T_025']
-TrajList = [['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075']]
-#TrajList = ['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075']
 #TrajList = ['CG_AtomPos_np_02_T_320', 'CG_AtomPos_np_20_T_320']
-
+TrajList = [['AAtraj_np01','AAtraj_np04']]
 # parameter names and their values; need to specify trajectorylist above 
 CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns']
 CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns]
@@ -85,7 +70,7 @@ def GenerateSubmitScript(CGModelScript, cwd, lines_SubmitScript, SubmitScriptNam
 		g.write(lines_SubmitScript)
     
 def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
-                               CGMap, RunSpline, NumberGauss, SubmitScriptName, SubmitScript, NumberThreads, RunName, JobRunTime):
+                               CGMap, RunSpline, NumberGauss, SubmitScriptName, SubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = None):
     ''' Main function for creating the CG directory 
         
         FUNCTION-INPUTS:
@@ -103,7 +88,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             NumberThreads:          The number of threads to use for these jobs
             RunName:                The name of the job in the submission script
             JobRunTime:             The run time of the job in the submission script 
-        
+            TrajListInd:            Index of list of trajectories in TrajList for expanded ensemble. None for 1-state CG 
         FUNCTION-OUTPUTS:
             The function outputs a CG directory and submits this to the queue. 
     '''
@@ -146,8 +131,9 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         if 'TrajList' in param_name:
             param_value = BuildTrajList(ExpEnsemble, Traj)
         if 'NMol' in param_name:
+	    print ('NMol: {}'.format(param_value))
             if ExpEnsemble:
-                param_value = str(param_value)
+                param_value = str(param_value[TrajListInd])
             else:
                 for NMol_val in param_value:
                     #print (Traj)
@@ -240,7 +226,7 @@ elif ExpEnsemble == True:
                 NumberGauss = 1
                 # Create the CG directory
                 CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
-                                            CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime)
+                                            CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
             if RunGauss:
                 for NumberGauss in NumberGaussianBasisSets:
                     RunDirName = str('ExpEns_CGMap_{}_GaussBasis_{}_{}'.format(CGMap,NumberGauss,SpecialName))
