@@ -16,6 +16,7 @@ NumberThreads = 1
 JobRunTime = '700:00:00'
 SplineKnots = 8
 Cut = 10.
+DOP = 24
 NMolList = [[1,4]] # Needs to be the list of # molecules if doing Exp. Ens. 
 ScaleRuns = True 
 RunStepScaleList = '[1.1,1]' # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer
@@ -34,8 +35,8 @@ GaussMethod = 1
 #TrajList = ['CG_AtomPos_np_02_T_320', 'CG_AtomPos_np_20_T_320']
 TrajList = [['AAtraj_np01','AAtraj_np04']]
 # parameter names and their values; need to specify trajectorylist above 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns']
-CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns]
+CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP']
+CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -170,6 +171,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         g.write(temp_CGModel)
         
     # Submit Job
+    sys.stdout.write('Submitting job')
     call_1 = "qsub submit.sh"
 
     print(call_1)

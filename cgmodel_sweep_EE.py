@@ -16,7 +16,7 @@ os.system('rm parse*\n')
 
 Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
-DOP = 24
+DOP = DOP_DUMMY
 MappingRatio = CGMap_DUMMY
 Pressure_List = [0.2852833,0.24216]
 StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]  #HERE may need to be more gradual for stability
