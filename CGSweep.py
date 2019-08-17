@@ -17,23 +17,24 @@ JobRunTime = '700:00:00'
 SplineKnots = 8
 Cut = 10.
 DOP = 24
-NMolList = [[1,4]] # Needs to be the list of # molecules if doing Exp. Ens. 
+#NMolList = [[1,4],[1,8]] # Needs to be the list of # molecules if doing Exp. Ens. 
+NMolList = [1,4,8]
 ScaleRuns = True 
-RunStepScaleList = '[1.1,1]' # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer
+RunStepScaleList = [1.1,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 NumberGaussianBasisSets = [1,2,3]
 CG_Mappings = [3,1]
 RunSpline = True
 RunGauss = False
 #N.S. TODO: Add in option for EE runs
-ExpEnsemble = True
+ExpEnsemble = False 
 GaussMethod = 1
 
 ''' USER-INPUT ''' 
 ''' Specify the trajectory list to use ''' 
 # IF using ExpEnsemble = True need to make TrajList a list of list!
+TrajList = ['AAtraj_np01','AAtraj_np04','AAtraj_np08']
+#TrajList = [['AAtraj_np01','AAtraj_np04'],['AAtraj_np01','AAtraj_np08']]
 
-#TrajList = ['CG_AtomPos_np_02_T_320', 'CG_AtomPos_np_20_T_320']
-TrajList = [['AAtraj_np01','AAtraj_np04']]
 # parameter names and their values; need to specify trajectorylist above 
 CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP']
 CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP]
@@ -89,7 +90,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             NumberThreads:          The number of threads to use for these jobs
             RunName:                The name of the job in the submission script
             JobRunTime:             The run time of the job in the submission script 
-            TrajListInd:            Index of list of trajectories in TrajList for expanded ensemble. None for 1-state CG 
+            TrajListInd:            Index of list of trajectories in TrajList 
         FUNCTION-OUTPUTS:
             The function outputs a CG directory and submits this to the queue. 
     '''
@@ -104,8 +105,9 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             for file in files:
                 #print (file)
                 if file.endswith(".lammpstrj"):
-                    #print(os.path.join(cwd,RunDirName,file))
-                    copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
+			if file.split(".lammpstrj")[0] in Traj:
+                    		#print(os.path.join(cwd,RunDirName,file))
+                    		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
                 if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
@@ -136,13 +138,12 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             if ExpEnsemble:
                 param_value = str(param_value[TrajListInd])
             else:
-                for NMol_val in param_value:
-                    #print (Traj)
-                    #print ('np_{:02d}'.format(NMol_val))
-                    if ('np_{:02d}'.format(NMol_val)) in Traj:
-                        NMol_temp = NMol_val
-                param_value = "[{}]".format(NMol_temp)
-                
+                param_value = "[{}]".format(param_value[TrajListInd])
+	if 'RunStepScaleList' in param_name:
+	    if ExpEnsemble:
+	    	param_value = str(param_value[TrajListInd])
+	    else:
+		param_value = "[{}]".format(param_value[TrajListInd])
         temp_CGModel = temp_CGModel.replace((str(param_name)+'_DUMMY'), str(param_value))
     
     # Assign the number of Gaussian in basis set 
@@ -174,14 +175,14 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
     sys.stdout.write('Submitting job')
     call_1 = "qsub submit.sh"
 
-    print(call_1)
-    p1 = prcs.Popen(call_1, stdout=prcs.PIPE, shell=True)	
-    (output, err) = p1.communicate()
-    p_status = p1.wait()
-    print("{}".format(err))
+    #print(call_1)
+    #p1 = prcs.Popen(call_1, stdout=prcs.PIPE, shell=True)	
+    #(output, err) = p1.communicate()
+    #p_status = p1.wait()
+    #print("{}".format(err))
 
-    with open("cgsweep_submit.log",'w') as logout:
-        logout.write(output.decode("utf-8"))
+    #with open("cgsweep_submit.log",'w') as logout:
+    #    logout.write(output.decode("utf-8"))
     
     # Move backup one directory
     os.chdir("..")
@@ -209,7 +210,7 @@ if ExpEnsemble == False: # For single-state point optimizations
                 RunName = RunDirName
                 # Create the CG directory
                 CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
-                                            CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime)
+                                            CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
             if RunGauss:
                 for NumberGauss in NumberGaussianBasisSets:
                     RunDirName = str(Traj+'_CGMap_{}_GaussBasis_{}_{}'.format(CGMap,NumberGauss,SpecialName))
@@ -222,8 +223,9 @@ if ExpEnsemble == False: # For single-state point optimizations
 elif ExpEnsemble == True:
     for i,Traj in enumerate(TrajList): # for ExpEnsemble, expects TrajList to be a list-of-list!
         for CGMap in CG_Mappings: # The monomer mapping ratio
-            if RunSpline: 
-                RunDirName = str('ExpEns_CGMap_{}_Spline_{}'.format(CGMap,SpecialName))
+            if RunSpline:
+		NMol_str = [str(NMol) for NMol in NMolList[i]] 
+                RunDirName = str('ExpEns_NMol_{}_CGMap_{}_Spline_{}'.format('_'.join(NMol_str),CGMap,SpecialName))
                 RunName = RunDirName
                 NumberGauss = 1
                 # Create the CG directory
