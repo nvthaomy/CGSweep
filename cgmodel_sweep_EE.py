@@ -29,9 +29,9 @@ sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
 # md iterations
-StepsEquil = 10000
-StepsProd = 1000000
-StepsStride = 10
+StepsEquil = 500000
+StepsProd = 3e6
+StepsStride = 200
 RunStepScaleList = RunStepScaleList_DUMMY
 GaussMethod = GaussMethod_DUMMY
 
@@ -57,7 +57,7 @@ FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
 # Add in option to specify the Spline inner slope (i.e. 2kbTperA)
 # Add in Spline fit parameters (i.e. make stronger or longer ranged based on mapping)
 SysLoadFF = False # Use if you desire to seed a run with an already converged force-field.
-force_field_file = 'CG_run_OptSpline_ConstSlope_ff_converged.dat'               
+force_field_file = 'xp0.04_traj_wrapped_CGMap_4_Spline_30knots_NoP_ff.dat'               
 UseWPenalty = False
 UseLammps = True # Should you this for now
 UseSim = False
@@ -85,7 +85,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = 0., FConst =0.01, Label = 'Bond')
+                               Dist0 = 0., FConst = 1., Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
@@ -197,9 +197,8 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     Int.Method = Int.Methods.VVIntegrate        
     Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    Int.Method.LangevinGamma = 10
-    Int.Method.TimeStep = 0.0025 # note: reduced units
-
+    Int.Method.TimeStep = 0.0001 # note: reduced units
+    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
     return Sys, [FFList, FFGaussians]
@@ -342,9 +341,10 @@ if RunOptimization:
         
         if SplineConstSlope:
             for SysFF in SysFFList:
-                PSpline = SysFF[0][1] 
-                PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
-            
+                PSpline = SysFF[0][1]
+		print "Relaxing spline knot constraints" 
+                #PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
+                PSpline.RelaxKnotConstraints() #relax all spline constraints 
             OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
             
             # opt. 
@@ -536,10 +536,10 @@ if RunConvergedCGModel:
             Int = Sys.Int
             
             # MD iterations
-            NStepsMin = 100
-            NStepsEquil = 10000000
-            NStepsProd = 75000000
-            WriteFreq = 50000
+            NStepsMin = 1000
+            NStepsEquil = 2e6
+            NStepsProd = 50e6
+            WriteFreq = 5000
             
             
             if ScaleRuns:
@@ -551,8 +551,8 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-            Int.Method.LangevinGamma = 10
-            Int.Method.TimeStep = 0.001 # note: reduced units
+    	    Int.Method.TimeStep = 0.0001 # note: reduced units
+	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."

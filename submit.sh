@@ -8,9 +8,8 @@ module load intel/18
 
 cd $SLURM_SUBMIT_DIR
 /bin/hostname
-
-export PYTHONPATH=/home/nsherck/SimPackages/simGit:$PYTHONPATH
-export PYTHONPATH=/home/nsherck/SimPackages/simGit:$PYTHONPATH
+export PATH="/home/mnguyen/miniconda3/envs/py2/bin/:$PATH"
+export PYTHONPATH=/home/mnguyen/bin/sim_git:$PYTHONPATH
 export PATH=/home/nsherck/lammps-22Aug18/bin:$PATH
 
 python CGModelScript_DUMMY

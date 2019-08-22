@@ -11,20 +11,20 @@ from shutil import copyfile
 TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'TESTRUNS'
-NumberThreads = 1
+SpecialName     = 'NoP'
+NumberThreads = 5
 JobRunTime = '700:00:00'
-SplineKnots = 8
+SplineKnots = 15
 Cut = 10.
 DOP = 24
 #NMolList = [[1,4],[1,8]] # Needs to be the list of # molecules if doing Exp. Ens. 
-NMolList = [1,4,8]
+NMolList = [10]
 ScaleRuns = True 
-RunStepScaleList = [1.1,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-NumberGaussianBasisSets = [1,2,3]
-CG_Mappings = [3,1]
-RunSpline = True
-RunGauss = False
+RunStepScaleList = [2] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+NumberGaussianBasisSets = [2,1]
+CG_Mappings = [3]
+RunSpline = False
+RunGauss = True
 #N.S. TODO: Add in option for EE runs
 ExpEnsemble = False 
 GaussMethod = 1
@@ -32,7 +32,7 @@ GaussMethod = 1
 ''' USER-INPUT ''' 
 ''' Specify the trajectory list to use ''' 
 # IF using ExpEnsemble = True need to make TrajList a list of list!
-TrajList = ['AAtraj_np01','AAtraj_np04','AAtraj_np08']
+TrajList = ['xp0.04_traj_wrapped']
 #TrajList = [['AAtraj_np01','AAtraj_np04'],['AAtraj_np01','AAtraj_np08']]
 
 # parameter names and their values; need to specify trajectorylist above 
@@ -172,7 +172,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         g.write(temp_CGModel)
         
     # Submit Job
-    sys.stdout.write('Submitting job')
+    sys.stdout.write('Submitting job\n')
     call_1 = "qsub submit.sh"
 
     print(call_1)
@@ -218,7 +218,7 @@ if ExpEnsemble == False: # For single-state point optimizations
                     temp_RunSpline = False
                     # Create the CG directory
                     CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
-                                                CGMap, temp_RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime)
+                                                CGMap, temp_RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
 
 elif ExpEnsemble == True:
     for i,Traj in enumerate(TrajList): # for ExpEnsemble, expects TrajList to be a list-of-list!
@@ -238,7 +238,7 @@ elif ExpEnsemble == True:
                     temp_RunSpline = False
                     # Create the CG directory
                     CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
-                                                CGMap, temp_RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime)
+                                                CGMap, temp_RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
 
                
 
