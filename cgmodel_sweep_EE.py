@@ -10,9 +10,8 @@ print sim
 
 os.system('rm -rf pylib\n')
 os.system('rm *pyc\n')
-os.system('rm tmp*\n')
+#os.system('rm tmp*\n')
 os.system('rm *pickle\n')
-os.system('rm parse*\n')
 
 Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
@@ -28,9 +27,24 @@ sim.export.lammps.InnerCutoff = 0.00001
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
+
+sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
+sim.export.omm.device = -1 #-1 is default, let openmm choose its own platform.
+sim.export.omm.NPairPotentialKnots = 500 #number of points used to spline-interpolate the potential
+sim.export.omm.InnerCutoff = 0.00001 #0.001 is default. Note that a small value is not necessary, like in the lammps export, because the omm export interpolates to zero
+sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structure, 0 is default
+sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
+sim.export.omm.UseTabulated = False
+
+#External potential
+Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
+if Ext["UConst"] > 0:
+    print("Using external sinusoid with UConst {}".format(Ext["UConst"]))
+    UseExternal = True
+
 # md iterations
 StepsEquil = 500000
-StepsProd = 3e6
+StepsProd = 6e6
 StepsStride = 200
 RunStepScaleList = RunStepScaleList_DUMMY
 GaussMethod = GaussMethod_DUMMY
@@ -59,7 +73,8 @@ FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
 SysLoadFF = False # Use if you desire to seed a run with an already converged force-field.
 force_field_file = 'xp0.04_traj_wrapped_CGMap_4_Spline_30knots_NoP_ff.dat'               
 UseWPenalty = False
-UseLammps = True # Should you this for now
+UseLammps = False # Should you this for now
+UseOMM = True
 UseSim = False
 WriteTraj = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
@@ -81,11 +96,12 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     
     FFList = []
     FFGaussians = []
+    AtomType = Sys.World[0][0] #since only have one atom type in the system
     
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = 0., FConst = 1., Label = 'Bond')
+                               Dist0 = 0., FConst = 500., Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
@@ -141,7 +157,14 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         # add reqd. potentials to the forcefield
         FFList.extend([PLD_AA])
     
-    return FFList, FFGaussians 
+   #--- External Potential---
+    if UseExternal:
+        """applies external field to just species included in FilterExt"""
+        FilterExt = sim.atomselect.PolyFilter([AtomType])
+        ExtPot = sim.potential.ExternalSinusoid(Sys, Filter=FilterExt, UConst=Ext["UConst"], NPeriods=Ext["NPeriods"], PlaneAxis=Ext["PlaneAxis"], PlaneLoc=Ext["PlaneLoc"], Label="ExtSin")
+	FFList.append(ExtPot)
+
+    return FFList, FFGaussians
 
 def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensity, CoordMin, CoordMax,
                     LDKnots, RunSpline, SplineKnots, NumberGaussians):
@@ -277,6 +300,8 @@ for index, NMol in enumerate(NMol_List):
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
+    elif UseOMM:
+	OptClass = sim.srel.optimizetrajomm.OptimizeTrajOpenMMClass
     else:
         OptClass = sim.srel.optimizetraj.OptimizeTrajClass
     

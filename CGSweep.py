@@ -12,32 +12,38 @@ TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 SpecialName     = 'NoP'
-NumberThreads = 5
+NumberThreads = 8
 JobRunTime = '700:00:00'
-SplineKnots = 15
+SplineKnots = 30
 Cut = 10.
 DOP = 24
 #NMolList = [[1,4],[1,8]] # Needs to be the list of # molecules if doing Exp. Ens. 
-NMolList = [10]
+NMolList = [250]
 ScaleRuns = True 
-RunStepScaleList = [2] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+RunStepScaleList = [1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 NumberGaussianBasisSets = [2,1]
 CG_Mappings = [3]
-RunSpline = False
-RunGauss = True
+RunSpline = True
+RunGauss = False
 #N.S. TODO: Add in option for EE runs
 ExpEnsemble = False 
 GaussMethod = 1
 
+#===External potential===
+UConst = 0.1*3 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
+NPeriods = 1
+PlaneAxis = 0 #0 = x, 1 = y, 2 = z
+PlaneLoc = 0.
+
 ''' USER-INPUT ''' 
 ''' Specify the trajectory list to use ''' 
 # IF using ExpEnsemble = True need to make TrajList a list of list!
-TrajList = ['xp0.04_traj_wrapped']
+TrajList = ['L80_U0.1_xp0.5']
 #TrajList = [['AAtraj_np01','AAtraj_np04'],['AAtraj_np01','AAtraj_np08']]
 
 # parameter names and their values; need to specify trajectorylist above 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP']
-CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP]
+CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc']
+CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
