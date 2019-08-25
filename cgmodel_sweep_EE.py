@@ -34,7 +34,7 @@ sim.export.omm.NPairPotentialKnots = 500 #number of points used to spline-interp
 sim.export.omm.InnerCutoff = 0.00001 #0.001 is default. Note that a small value is not necessary, like in the lammps export, because the omm export interpolates to zero
 sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structure, 0 is default
 sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
-sim.export.omm.UseTabulated = False
+sim.export.omm.UseTabulated = True
 
 #External potential
 Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
