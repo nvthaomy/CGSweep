@@ -41,7 +41,8 @@ Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxi
 if Ext["UConst"] > 0:
     print("Using external sinusoid with UConst {}".format(Ext["UConst"]))
     UseExternal = True
-
+else:
+    UseExternal = False
 # md iterations
 StepsEquil = 500000
 StepsProd = 6e6
