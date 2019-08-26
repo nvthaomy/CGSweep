@@ -238,8 +238,9 @@ elif ExpEnsemble == True:
                 CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
                                             CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
             if RunGauss:
+		NMol_str = [str(NMol) for NMol in NMolList[i]]
                 for NumberGauss in NumberGaussianBasisSets:
-                    RunDirName = str('ExpEns_CGMap_{}_GaussBasis_{}_{}'.format(CGMap,NumberGauss,SpecialName))
+		    RunDirName = str('ExpEns_NMol_{}_CGMap_{}_GaussBasis_{}_{}'.format('_'.join(NMol_str),CGMap,NumberGauss,SpecialName))
                     RunName = RunDirName
                     temp_RunSpline = False
                     # Create the CG directory
