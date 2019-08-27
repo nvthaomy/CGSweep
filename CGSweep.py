@@ -242,7 +242,8 @@ if UseOMM == UseLammps:
 	raise Exception('UseOMM and UseLammps cannot have the same value')
 if RunSpline == RunGauss:
 	raise Exception('RunSpline and RunGauss cannot have the same value')
-
+if UConst > 0 and not UseOMM:
+	raise Exception('Must set UseOMM = True  if UConst > 0')
 cwd = os.getcwd()
 # Read in the cgmodel_sweep.py script.
 # This is the script controlling the Srel Optimization.
