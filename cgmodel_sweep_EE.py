@@ -8,13 +8,17 @@ import sim, pickleTraj
 
 print sim
 
+#os.system('rm -rf pylib\n')
+#os.system('rm *pyc\n')
+#os.system('rm tmp*\n')
+#os.system('rm *pickle\n')
 
 Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
-DOP = 50
+DOP = DOP_DUMMY
 MappingRatio = CGMap_DUMMY
-Pressure_List = [0.2852833,0.24216]
-StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]  #HERE may need to be more gradual for stability
+Pressure_List = Pressure_List_DUMMY 
+StageCoefs = StageCoefs_DUMMY  #HERE may need to be more gradual for stability
 
 SrelName = "CG_run"
 
@@ -23,10 +27,27 @@ sim.export.lammps.InnerCutoff = 0.00001
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
+
+sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
+sim.export.omm.device = -1 #-1 is default, let openmm choose its own platform.
+sim.export.omm.NPairPotentialKnots = 500 #number of points used to spline-interpolate the potential
+sim.export.omm.InnerCutoff = 0.001 #0.001 is default. Note that a small value is not necessary, like in the lammps export, because the omm export interpolates to zero
+sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structure, 0 is default
+sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
+sim.export.omm.UseTabulated = True
+
+#External potential
+Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
+if Ext["UConst"] > 0:
+    print("Using external sinusoid with UConst {}".format(Ext["UConst"]))
+    UseExternal = True
+else:
+    UseExternal = False
+
 # md iterations
-StepsEquil = 25000
-StepsProd = 1000000
-StepsStride = 20
+StepsEquil = StepsEquil_DUMMY
+StepsProd = StepsProd_DUMMY
+StepsStride = StepsStride_DUMMY
 RunStepScaleList = RunStepScaleList_DUMMY
 GaussMethod = GaussMethod_DUMMY
 
@@ -42,25 +63,26 @@ LDKnots    = 10
 
 NumberGaussians = NumberGaussians_DUMMY
 ScaleRuns = ScaleRuns_DUMMY
-RunStepScaleList = RunStepScaleList_DUMMY
 
 RunSpline = RunSpline_DUMMY
 SplineKnots = SplineKnots_DUMMY
+
 # Spline options
 #   Option1 = Constant slope 
 #   Option2 = Constant slope, then turn-off
 #   Option3 = Slope unconstrained
 
-SplineOption = 'Option2'
+SplineConstSlope = SplineConstSlope_DUMMY # Turns on Constant slope for first opt.; then shuts it off for final opt. 
+FitSpline = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
 
-FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
 # N.S. TODO:
 # Add in option to specify the Spline inner slope (i.e. 2kbTperA)
 # Add in Spline fit parameters (i.e. make stronger or longer ranged based on mapping)
-SysLoadFF = False # Use if you desire to seed a run with an already converged force-field.
-force_field_file = 'CG_run_OptSpline_ConstSlope_ff_converged.dat'               
-UseWPenalty = False
-UseLammps = True # Should you this for now
+SysLoadFF = SysLoadFF_DUMMY # Use if you desire to seed a run with an already converged force-field.
+force_field_file = force_field_file_DUMMY               
+UseWPenalty = UseWPenalty_DUMMY
+UseLammps = UseLammps_DUMMY 
+UseOMM = UseOMM_DUMMY
 UseSim = False
 WriteTraj = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
@@ -82,11 +104,12 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     
     FFList = []
     FFGaussians = []
+    AtomType = Sys.World[0][0] #since only have one atom type in the system
     
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = 0., FConst =0.01, Label = 'Bond')
+                               Dist0 = 0., FConst = 500., Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
@@ -142,7 +165,14 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         # add reqd. potentials to the forcefield
         FFList.extend([PLD_AA])
     
-    return FFList, FFGaussians 
+   #--- External Potential---
+    if UseExternal:
+        """applies external field to just species included in FilterExt"""
+        FilterExt = sim.atomselect.PolyFilter([AtomType])
+        ExtPot = sim.potential.ExternalSinusoid(Sys, Filter=FilterExt, UConst=Ext["UConst"], NPeriods=Ext["NPeriods"], PlaneAxis=Ext["PlaneAxis"], PlaneLoc=Ext["PlaneLoc"], Label="ExtSin")
+	FFList.append(ExtPot)
+
+    return FFList, FFGaussians
 
 def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensity, CoordMin, CoordMax,
                     LDKnots, RunSpline, SplineKnots, NumberGaussians):
@@ -198,9 +228,8 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     Int.Method = Int.Methods.VVIntegrate        
     Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    Int.Method.LangevinGamma = 10
-    Int.Method.TimeStep = 0.0025 # note: reduced units
-
+    Int.Method.TimeStep = 0.0001 # note: reduced units
+    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
     return Sys, [FFList, FFGaussians]
@@ -235,8 +264,10 @@ for index, NMol in enumerate(NMol_List):
                 this_Map = sim.atommap.AtomMap(Atoms1 = Atoms1, Atom2 = Atom2)
                 Map += [this_Map]
             monomer_count += CGDOP*MappingRatio
-    Traj_Temp = sim.traj.Lammps(Traj)
-    BoxL = Traj_Temp.Init_BoxL[0]
+    #Traj_Temp = sim.traj.Lammps(Traj)
+    #BoxL = Traj_Temp.Init_BoxL[0]
+    Traj_Temp = pickleTraj(Traj_List[index])
+    BoxL = Traj_Temp.FrameData['BoxL'][0] 
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
@@ -255,6 +286,9 @@ for index, NMol in enumerate(NMol_List):
     # Perform atom mapping for specific system
     MapTemp = sim.atommap.PosMap()
     print SysTemp.Name
+    print 'NMol: {}'.format(SysTemp.NMol)
+    print 'NAtom: {}'.format(SysTemp.NAtom)
+    print 'NDOF: {}'.format(SysTemp.NDOF)
     for (i, a) in enumerate(SysTemp.Atom):
         MapTemp += [sim.atommap.AtomMap(Atoms1 = i, Atom2 = a)]
     
@@ -274,6 +308,8 @@ for index, NMol in enumerate(NMol_List):
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
+    elif UseOMM:
+	OptClass = sim.srel.optimizetrajomm.OptimizeTrajOpenMMClass
     else:
         OptClass = sim.srel.optimizetraj.OptimizeTrajClass
     
@@ -299,7 +335,7 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-        W = 3*NMol - 3*Press*BoxL**3
+	W = SysTemp.NDOF - 3*Press*BoxL**3
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
@@ -348,9 +384,10 @@ if RunOptimization:
         
         if SplineOption == 'Option2':
             for SysFF in SysFFList:
-                PSpline = SysFF[0][1] 
-                PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
-            
+                PSpline = SysFF[0][1]
+		print "Relaxing spline knot constraints" 
+                #PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
+                PSpline.RelaxKnotConstraints() #relax all spline constraints 
             OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
             
             # opt. 
@@ -505,7 +542,7 @@ if RunConvergedCGModel:
     UseSim          = False
     CalcPress       = True
     CalcRg          = True
-    CalcRee         = True
+    CalcRee         = False
     OutputDCD       = True
     CalcStatistics  = True
     ReturnTraj      = False
@@ -546,10 +583,10 @@ if RunConvergedCGModel:
             Int = Sys.Int
             
             # MD iterations
-            NStepsMin = 100
-            NStepsEquil = 10000000
-            NStepsProd = 75000000
-            WriteFreq = 50000
+            NStepsMin = NSteps_Min_DUMMY
+            NStepsEquil = NSteps_Equil_DUMMY
+            NStepsProd = NSteps_Prod_DUMMY
+            WriteFreq = WriteFreq_DUMMY
             
             
             if ScaleRuns:
@@ -561,8 +598,8 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-            Int.Method.LangevinGamma = 10
-            Int.Method.TimeStep = 0.001 # note: reduced units
+    	    Int.Method.TimeStep = 0.0001 # note: reduced units
+	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."
@@ -705,3 +742,4 @@ if RunConvergedCGModel:
                         g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(RgAvg,RgVar,RgStdErr,RgCorrAvg,RgCorrVar,RgCorrStdErr))
                     if CalcPress:
                         g.write('Press     {0:8.4e}      {1:8.4e}      {2:8.4e}      {3:8.4e}      {4:8.4e}      {5:8.4e}\n'.format(PressAvg,PressVar,PressStdErr,PressCorrAvg,PressCorrVar,PressCorrStdErr))
+
