@@ -8,19 +8,19 @@ import os
 from shutil import copyfile
 
 ''' USER-INPUT '''
-TrajFileDir = 'Trajectories_EE_T075'
+TrajFileDir = 'Trajectories_3state'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'T_075_EE_Yes_Option1_LAMMPS_Yes_TESTRUNS'
+SpecialName     = 'EE_Yes_Spline_LAMMPS_No_NewCode_Option2'
 NumberThreads = 2
-JobRunTime = '120:00:00'
+JobRunTime = '160:00:00'
 SplineKnots = 7
-Cut = 25
+Cut = 18
 NMolList = [02,20] # Needs to be the list of # molecules if doing Exp. Ens. 
 ScaleRuns = True 
-RunStepScaleList = '[1.1,1]' # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer
+RunStepScaleList = '[10,4,1]' # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer
 NumberGaussianBasisSets = [1,2,3]
-CG_Mappings = [2,5,10]
+CG_Mappings = [2]
 RunSpline = True
 RunGauss = False
 #N.S. TODO: Add in option for EE runs
@@ -37,14 +37,18 @@ GaussMethod = 1
 #TrajList = ['CG_AtomPos_np_20_T_025','CG_AtomPos_np_20_T_075','CG_AtomPos_np_20_T_120',
 #            'CG_AtomPos_np_20_T_160','CG_AtomPos_np_20_T_200','CG_AtomPos_np_20_T_240',
 #            'CG_AtomPos_np_20_T_280','CG_AtomPos_np_20_T_320']
-#TrajList = ['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120', 'CG_AtomPos_np_40_T_120']
-#TrajList = ['CG_AtomPos_np_02_T_160', 'CG_AtomPos_np_20_T_160']
-#TrajList = ['CG_AtomPos_np_02_T_200', 'CG_AtomPos_np_20_T_200']
-#TrajList = ['CG_AtomPos_np_02_T_240', 'CG_AtomPos_np_20_T_240']
-#TrajList = ['CG_AtomPos_np_02_T_280', 'CG_AtomPos_np_20_T_280', 'CG_AtomPos_np_40_T_280']
+TrajList = [['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075'],
+            ['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120', 'CG_AtomPos_np_40_T_120'],
+            ['CG_AtomPos_np_02_T_160', 'CG_AtomPos_np_20_T_160'],
+            ['CG_AtomPos_np_02_T_200', 'CG_AtomPos_np_20_T_200'],
+            ['CG_AtomPos_np_02_T_240', 'CG_AtomPos_np_20_T_240'],
+            ['CG_AtomPos_np_02_T_280', 'CG_AtomPos_np_20_T_280', 'CG_AtomPos_np_40_T_280']]
+			
+TrajList = [['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120', 'CG_AtomPos_np_40_T_120'],
+			['CG_AtomPos_np_02_T_280', 'CG_AtomPos_np_20_T_280', 'CG_AtomPos_np_40_T_280']]
 
 #TrajList = ['CG_AtomPos_np_02_T_025', 'CG_AtomPos_np_20_T_025']
-TrajList = [['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075']]
+#TrajList = [['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075']]
 #TrajList = ['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075']
 #TrajList = ['CG_AtomPos_np_02_T_320', 'CG_AtomPos_np_20_T_320']
 
@@ -117,9 +121,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         for subdir, dirs, files in os.walk(source):
             for file in files:
                 #print (file)
-                if file.endswith(".lammpstrj"):
-                    #print(os.path.join(cwd,RunDirName,file))
-                    copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
+                for trajname in Traj:
+                    temp_trajname = trajname + ".lammpstrj"
+                    if  file in temp_trajname:
+                        #print(os.path.join(cwd,RunDirName,file))
+                        copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
                 if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
@@ -235,7 +241,7 @@ elif ExpEnsemble == True:
     for i,Traj in enumerate(TrajList): # for ExpEnsemble, expects TrajList to be a list-of-list!
         for CGMap in CG_Mappings: # The monomer mapping ratio
             if RunSpline: 
-                RunDirName = str('ExpEns_CGMap_{}_Spline_{}'.format(CGMap,SpecialName))
+                RunDirName = str('ExpEns_CGMap_{}_Spline_{}_{}'.format(CGMap,i,SpecialName))
                 RunName = RunDirName
                 NumberGauss = 1
                 # Create the CG directory
@@ -243,7 +249,7 @@ elif ExpEnsemble == True:
                                             CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime)
             if RunGauss:
                 for NumberGauss in NumberGaussianBasisSets:
-                    RunDirName = str('ExpEns_CGMap_{}_GaussBasis_{}_{}'.format(CGMap,NumberGauss,SpecialName))
+                    RunDirName = str('ExpEns_CGMap_{}_GaussBasis_{}_{},{}'.format(CGMap,NumberGauss,i,SpecialName))
                     RunName = RunDirName
                     temp_RunSpline = False
                     # Create the CG directory

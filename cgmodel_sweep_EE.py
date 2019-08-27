@@ -24,9 +24,9 @@ sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
 # md iterations
-StepsEquil = 10000
+StepsEquil = 25000
 StepsProd = 1000000
-StepsStride = 10
+StepsStride = 20
 RunStepScaleList = RunStepScaleList_DUMMY
 GaussMethod = GaussMethod_DUMMY
 
@@ -46,7 +46,13 @@ RunStepScaleList = RunStepScaleList_DUMMY
 
 RunSpline = RunSpline_DUMMY
 SplineKnots = SplineKnots_DUMMY
-SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt. 
+# Spline options
+#   Option1 = Constant slope 
+#   Option2 = Constant slope, then turn-off
+#   Option3 = Slope unconstrained
+
+SplineOption = 'Option2'
+
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
 # N.S. TODO:
 # Add in option to specify the Spline inner slope (i.e. 2kbTperA)
@@ -89,17 +95,17 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     if RunSpline:
         PSpline = sim.potential.PairSpline(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
                                            NKnot = SplineKnots, Label = 'Spline', 
-                                           NonbondEneSlope = "0.5kTperA", BondEneSlope = "0.5kTperA")
+                                           NonbondEneSlope = "40kTperA", BondEneSlope = "40kTperA")
         if FitSpline:
-            Max = 8.
-            decay = 0.1
+            Max = 50.
+            decay = 0.5
             ArgVals = np.linspace(0,Cut,100)
             ArgValsSq = np.multiply(ArgVals,ArgVals)
             EneVals = Max*np.exp(-1.*decay*ArgValsSq)
             PSpline.FitSpline(ArgVals, EneVals, Weights = None, MaxKnot = None, MinKnot = None)
         
         PSpline.KnotMinHistFrac = 0.005
-        if SplineConstSlope == False:
+        if SplineOption == 'Option3':
             PSpline.EneSlopeInner = None                             
         
         FFList.append(PSpline)
@@ -321,16 +327,26 @@ if RunOptimization:
     Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
     
     if RunSpline:
-        if SplineConstSlope: # First optimize with constant slope, need to adjust NonBondEne and BondEne Slopes
-            OptimizerPrefix = ("{}_OptSpline_ConstSlope".format(SrelName))
-        else: # otherwise run with non-constant slope (can be dangerous for the core region)
+    
+        ''' Run Splone: There are 3 options currently.
+        
+            Option1: Run with a constant slope
+            Option2: Run with a constant slope, then turnoff
+            Option3: Run entirely without a constant slope
+        
+        '''
+        if SplineOption == 'Option1' or SplineOption == 'Option3':
             OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
+        elif SplineOption == 'Option2':
+            OptimizerPrefix = ("{}_OptSpline_ConstSlope".format(SrelName))
+        else:
+            print('No spline option recognized or defined!')
         
         # opt. 
         RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs)
         
         
-        if SplineConstSlope:
+        if SplineOption == 'Option2':
             for SysFF in SysFFList:
                 PSpline = SysFF[0][1] 
                 PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
@@ -488,11 +504,15 @@ if RunConvergedCGModel:
     UseLammpsMD     = True
     UseSim          = False
     CalcPress       = True
+    CalcRg          = True
+    CalcRee         = True
     OutputDCD       = True
     CalcStatistics  = True
     ReturnTraj      = False
     CheckTimestep   = True
+    PBC             = True
     import MDAnalysis as mda
+    import mdtraj as md
     
     print (SysList)
     for Sys_Index, Sys in enumerate(SysList):
@@ -580,87 +600,108 @@ if RunConvergedCGModel:
                 
                 import stats
                 
-                ''' Calculate Rg Data '''
-                print("Calculating Rg Statistics...")
-                RgMean          = []
-                RgVar           = []
-                RgSamples       = []
-                RgCorr          = []
-                samplecount        = 0
-
-                for subdir, dirs, files in os.walk(os.getcwd()):
-                    for file in files:
-                        print(file)
-                        if '.dcd' in file and str(Sys.Name) in file: # look for the current trajectory file
-                            LammpsData  = Sys.Name+'_lammps.data'
-                            LammpsTrj   = Sys.Name+'_'+TrajFile
-                            print (LammpsData)
-                            print('TRJ')
-                            print(LammpsTrj)
-                            u = mda.Universe(LammpsData,LammpsTrj)
-                            
-                            NMol = Sys.NMol
-                            Atoms_Molecule = []
-                            Header = []
-                            Header.append('# Step')
-                            for i in range(NMol):
-                                molID = i+1
-                                Atoms_Molecule.append(u.select_atoms("resid {}".format(molID)))
-                                Header.append('Rg_{}'.format(molID))
-                                
-                            Rg_List = []
-                            step = 0
-                            for ts in u.trajectory:
-                                step += 1
-                                Rg_temp = []
-                                Rg_temp.append(step)
-                                for molecule in Atoms_Molecule:
-                                    Rg_temp.append(molecule.radius_of_gyration())
-                                Rg_List.append(Rg_temp)
-                            
-                            Rg_Array = np.asarray(Rg_List)
-                            np.savetxt(Sys.Name+'_Rg.data',Rg_Array,header='-'.join(Header))
-                            
-                            for i in range(NMol): # Calculate for each molecule
-                                molID = i+1 
-                                stats_out = statistics_py(os.path.join(os.getcwd(),(Sys.Name+'_Rg.data')),molID)
-                                RgMean.append(stats_out[2])
-                                RgVar.append(stats_out[5])
-                                RgCorr.append(stats_out[4])
+                ''' Calculate Ree Data '''
+                # More rhobust than Rg typically, since Rg will not be correct if PBC's not considered correctly
                 
-                RgCorrAvg = np.average(RgCorr)
-                RgCorrVar = np.var(RgCorr)
-                RgCorrStdErr = np.sqrt(RgCorrVar/len(RgCorr))
-                RgAvg = np.average(RgMean)
-                RgVar = np.sum(RgVar)/NMol**2
-                RgStdErr = np.sqrt(RgVar*RgCorrAvg/step/NMol) # Neglected factoring in the standard error from RgCorrAvg.
+                if CalcRee:
+                    print('Calculating end-to-end distance...')
+                
+                    for subdir, dirs, files in os.walk(os.getcwd()):
+                        for file in files:
+                            print(file)
+                            if '.dcd' in file and str(Sys.Name) in file: # look for the current trajectory file
+                                LammpsData  = Sys.Name+'_lammps.data'
+                                LammpsTrj   = Sys.Name+'_'+TrajFile
+               
+                    EndEndDist = md.compute_distances(traj,atom_pairs=ReeAtomIndices, periodic=PBC, opt=True)
+                    ReeTimeseries.append(EndEndDist)
+                
+                
+                ''' Calculate Rg Data '''
+                if CalcRg:
+                    print("Calculating Rg Statistics...")
+                    RgMean          = []
+                    RgVar           = []
+                    RgSamples       = []
+                    RgCorr          = []
+                    samplecount        = 0
+
+                    for subdir, dirs, files in os.walk(os.getcwd()):
+                        for file in files:
+                            print(file)
+                            if '.dcd' in file and str(Sys.Name) in file: # look for the current trajectory file
+                                LammpsData  = Sys.Name+'_lammps.data'
+                                LammpsTrj   = Sys.Name+'_'+TrajFile
+                                print (LammpsData)
+                                print('TRJ')
+                                print(LammpsTrj)
+                                u = mda.Universe(LammpsData,LammpsTrj)
+                                
+                                NMol = Sys.NMol
+                                Atoms_Molecule = []
+                                Header = []
+                                Header.append('# Step')
+                                for i in range(NMol):
+                                    molID = i+1
+                                    Atoms_Molecule.append(u.select_atoms("resid {}".format(molID)))
+                                    Header.append('Rg_{}'.format(molID))
+                                    
+                                Rg_List = []
+                                step = 0
+                                for ts in u.trajectory:
+                                    step += 1
+                                    Rg_temp = []
+                                    Rg_temp.append(step)
+                                    for molecule in Atoms_Molecule:
+                                        Rg_temp.append(molecule.radius_of_gyration())
+                                    Rg_List.append(Rg_temp)
+                                
+                                Rg_Array = np.asarray(Rg_List)
+                                np.savetxt(Sys.Name+'_Rg.data',Rg_Array,header='-'.join(Header))
+                                
+                                for i in range(NMol): # Calculate for each molecule
+                                    molID = i+1 
+                                    stats_out = statistics_py(os.path.join(os.getcwd(),(Sys.Name+'_Rg.data')),molID)
+                                    RgMean.append(stats_out[2])
+                                    RgVar.append(stats_out[5])
+                                    RgCorr.append(stats_out[4])
+                    
+                    RgCorrAvg = np.average(RgCorr)
+                    RgCorrVar = np.var(RgCorr)
+                    RgCorrStdErr = np.sqrt(RgCorrVar/len(RgCorr))
+                    RgAvg = np.average(RgMean)
+                    RgVar = np.sum(RgVar)/NMol**2
+                    RgStdErr = np.sqrt(RgVar*RgCorrAvg/step/NMol) # Neglected factoring in the standard error from RgCorrAvg.
                 
                 ''' Calculate Pressure '''
-                print("Calculating Pressure Statistics...")
-                PressMean          = []
-                PressVar           = []
-                PressSamples       = []
-                PressCorr          = []
-                samplecount        = 0
-                
-                for subdir, dirs, files in os.walk(os.path.join(os.getcwd(),Sys.Name+'_PressData')):
-                    for file in files:
-                        stats_out = statistics_py(os.path.join(os.getcwd(),Sys.Name+'_PressData',file),1)
-                        PressMean.append(stats_out[2])
-                        PressVar.append(stats_out[5])
-                        PressCorr.append(stats_out[4])
-                        PressStdErr = stats_out[3]
-                
-                PressCorrAvg = np.average(PressCorr)
-                PressCorrVar = np.var(PressCorr)
-                PressCorrStdErr = np.sqrt(PressCorrVar/len(RgCorr))
-                PressAvg = np.average(PressMean)
-                PressVar = np.sum(PressVar)
-                PressStdErr = PressStdErr
+                if CalcPress:
+                    print("Calculating Pressure Statistics...")
+                    PressMean          = []
+                    PressVar           = []
+                    PressSamples       = []
+                    PressCorr          = []
+                    samplecount        = 0
+                    
+                    for subdir, dirs, files in os.walk(os.path.join(os.getcwd(),Sys.Name+'_PressData')):
+                        for file in files:
+                            stats_out = statistics_py(os.path.join(os.getcwd(),Sys.Name+'_PressData',file),1)
+                            PressMean.append(stats_out[2])
+                            PressVar.append(stats_out[5])
+                            PressCorr.append(stats_out[4])
+                            PressStdErr = stats_out[3]
+                    
+                    PressCorrAvg = np.average(PressCorr)
+                    PressCorrVar = np.var(PressCorr)
+                    PressCorrStdErr = np.sqrt(PressCorrVar/len(RgCorr))
+                    PressAvg = np.average(PressMean)
+                    PressVar = np.sum(PressVar)
+                    PressStdErr = PressStdErr
 
                 
                 
                 with open(Sys.Name+'_Statistics.dat','w') as g:
                     g.write('#  Avg.    Var.    StdErr.     Corr.   Var.    StdErr.\n')
-                    g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(RgAvg,RgVar,RgStdErr,RgCorrAvg,RgCorrVar,RgCorrStdErr))
-                    g.write('Press     {0:8.4e}      {1:8.4e}      {2:8.4e}      {3:8.4e}      {4:8.4e}      {5:8.4e}\n'.format(PressAvg,PressVar,PressStdErr,PressCorrAvg,PressCorrVar,PressCorrStdErr))
+                    if CalcRg:
+                        g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(RgAvg,RgVar,RgStdErr,RgCorrAvg,RgCorrVar,RgCorrStdErr))
+                    if CalcPress:
+                        g.write('Press     {0:8.4e}      {1:8.4e}      {2:8.4e}      {3:8.4e}      {4:8.4e}      {5:8.4e}\n'.format(PressAvg,PressVar,PressStdErr,PressCorrAvg,PressCorrVar,PressCorrStdErr))
