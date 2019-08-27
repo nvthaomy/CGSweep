@@ -8,17 +8,17 @@ import sim, pickleTraj
 
 print sim
 
-os.system('rm -rf pylib\n')
-os.system('rm *pyc\n')
+#os.system('rm -rf pylib\n')
+#os.system('rm *pyc\n')
 #os.system('rm tmp*\n')
-os.system('rm *pickle\n')
+#os.system('rm *pickle\n')
 
 Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
 DOP = DOP_DUMMY
 MappingRatio = CGMap_DUMMY
-Pressure_List = [0.2852833,0.24216]
-StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]  #HERE may need to be more gradual for stability
+Pressure_List = Pressure_List_DUMMY 
+StageCoefs = StageCoefs_DUMMY  #HERE may need to be more gradual for stability
 
 SrelName = "CG_run"
 
@@ -43,10 +43,11 @@ if Ext["UConst"] > 0:
     UseExternal = True
 else:
     UseExternal = False
+
 # md iterations
-StepsEquil = 500000
-StepsProd = 6e6
-StepsStride = 200
+StepsEquil = StepsEquil_DUMMY
+StepsProd = StepsProd_DUMMY
+StepsStride = StepsStride_DUMMY
 RunStepScaleList = RunStepScaleList_DUMMY
 GaussMethod = GaussMethod_DUMMY
 
@@ -62,20 +63,19 @@ LDKnots    = 10
 
 NumberGaussians = NumberGaussians_DUMMY
 ScaleRuns = ScaleRuns_DUMMY
-RunStepScaleList = RunStepScaleList_DUMMY
 
 RunSpline = RunSpline_DUMMY
 SplineKnots = SplineKnots_DUMMY
-SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt. 
-FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
+SplineConstSlope = SplineConstSlope_DUMMY # Turns on Constant slope for first opt.; then shuts it off for final opt. 
+FitSpline = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
 # N.S. TODO:
 # Add in option to specify the Spline inner slope (i.e. 2kbTperA)
 # Add in Spline fit parameters (i.e. make stronger or longer ranged based on mapping)
-SysLoadFF = False # Use if you desire to seed a run with an already converged force-field.
-force_field_file = 'xp0.04_traj_wrapped_CGMap_4_Spline_30knots_NoP_ff.dat'               
-UseWPenalty = False
-UseLammps = False # Should you this for now
-UseOMM = True
+SysLoadFF = SysLoadFF_DUMMY # Use if you desire to seed a run with an already converged force-field.
+force_field_file = force_field_file_DUMMY               
+UseWPenalty = UseWPenalty_DUMMY
+UseLammps = UseLammps_DUMMY 
+UseOMM = UseOMM_DUMMY
 UseSim = False
 WriteTraj = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
@@ -562,10 +562,10 @@ if RunConvergedCGModel:
             Int = Sys.Int
             
             # MD iterations
-            NStepsMin = 1000
-            NStepsEquil = 2e6
-            NStepsProd = 50e6
-            WriteFreq = 5000
+            NStepsMin = NSteps_Min_DUMMY
+            NStepsEquil = NSteps_Equil_DUMMY
+            NStepsProd = NSteps_Prod_DUMMY
+            WriteFreq = WriteFreq_DUMMY
             
             
             if ScaleRuns:

@@ -6,44 +6,78 @@ import math
 import subprocess as prcs
 import os, sys
 from shutil import copyfile
-
+#=================
 ''' USER-INPUT '''
+#=================
 TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'NoP'
-NumberThreads = 8
+SpecialName     = 'testMDoptions'
+NumberThreads = 1
 JobRunTime = '700:00:00'
-SplineKnots = 30
+
+#----------------------
+#System related options
+#----------------------
+DOP = 12
+CG_Mappings = [1]
+#The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
+NMolList = [[5,10]]
+TrajList = [['xp0.02_traj_wrapped_mapped','xp0.04_traj_wrapped_mapped']]
+Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble 
+if type(NMolList[0])==list:
+	ExpEnsemble = True
+else:
+	ExpEnsemble = False
+#------------------------
+#Options for optimization
+#------------------------
+UseWPenalty = False
+StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
+
+UseOMM = True #use openMM to run optimization, but still use lammps for converged run
+UseLammps = False
+ScaleRuns = True
+RunStepScaleList = [[1,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+SysLoadFF = False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file = 'ff.dat' 
+
+StepsEquil = 5
+StepsProd = 150
+StepsStride = 1
+#--------------------------
+#Options for pair potential
+#--------------------------
 Cut = 10.
-DOP = 24
-#NMolList = [[1,4],[1,8]] # Needs to be the list of # molecules if doing Exp. Ens. 
-NMolList = [250]
-ScaleRuns = True 
-RunStepScaleList = [1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-NumberGaussianBasisSets = [2,1]
-CG_Mappings = [3]
-RunSpline = True
-RunGauss = False
-#N.S. TODO: Add in option for EE runs
-ExpEnsemble = False 
+
+RunSpline = False
+SplineKnots = 30
+SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt.
+FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
+
+RunGauss = True
+NumberGaussianBasisSets = [1]
 GaussMethod = 1
 
-#===External potential===
-UConst = 0.1*3 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
+#External potential
+UConst = 0.0 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
 NPeriods = 1
 PlaneAxis = 0 #0 = x, 1 = y, 2 = z
 PlaneLoc = 0.
 
-''' USER-INPUT ''' 
-''' Specify the trajectory list to use ''' 
-# IF using ExpEnsemble = True need to make TrajList a list of list!
-TrajList = ['L80_U0.1_xp0.5']
-#TrajList = [['AAtraj_np01','AAtraj_np04'],['AAtraj_np01','AAtraj_np08']]
+#-----------------------------------------------------------------------------
+#Options for MD on convered CG model (MD steps are scaled by RunStepScaleList)
+#-----------------------------------------------------------------------------
+NSteps_Min = 1000
+NSteps_Equil = 2e6
+NSteps_Prod = 50e6
+WriteFreq = 5000
+
+#N.S. TODO: Add in option for EE runs
 
 # parameter names and their values; need to specify trajectorylist above 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc']
-CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc]
+CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd','StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty','Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq']
+CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc,UseOMM,UseLammps, StepsEquil, StepsProd,StepsStride,SplineConstSlope,FitSpline,SysLoadFF,force_field_file,UseWPenalty ,Pressure_List,StageCoefs,NSteps_Min,NSteps_Equil ,NSteps_Prod,WriteFreq]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -150,6 +184,14 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 	    	param_value = str(param_value[TrajListInd])
 	    else:
 		param_value = "[{}]".format(param_value[TrajListInd])
+	if 'Pressure_List' in param_name:
+            if ExpEnsemble:
+                param_value = str(param_value[TrajListInd])
+            else:
+                param_value = "[{}]".format(param_value[TrajListInd])
+        if 'force_field_file' in param_name:
+	    param_value = "'{}'".format(param_value)
+
         temp_CGModel = temp_CGModel.replace((str(param_name)+'_DUMMY'), str(param_value))
     
     # Assign the number of Gaussian in basis set 
@@ -196,7 +238,12 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 ''' ********************************************************************************* '''
 ''' ********* THE CODE THAT CALLS THE ABOVE FUNCTIONS TO GENERATE CG RUNS *********** '''
 ''' ********************************************************************************* '''
-
+if UseOMM == UseLammps:
+	raise Exception('UseOMM and UseLammps cannot have the same value')
+if RunSpline == RunGauss:
+	raise Exception('RunSpline and RunGauss cannot have the same value')
+if UConst > 0 and not UseOMM:
+	raise Exception('Must set UseOMM = True  if UConst > 0')
 cwd = os.getcwd()
 # Read in the cgmodel_sweep.py script.
 # This is the script controlling the Srel Optimization.
