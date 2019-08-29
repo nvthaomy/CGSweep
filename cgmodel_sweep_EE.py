@@ -228,7 +228,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     Int.Method = Int.Methods.VVIntegrate        
     Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    Int.Method.TimeStep = 0.0001 # note: reduced units
+    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
     Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
@@ -598,8 +598,8 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    	    Int.Method.TimeStep = 0.0001 # note: reduced units
-			Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+    	    Int.Method.TimeStep = Time_Step_DUMMY # note: reduced units
+	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."
