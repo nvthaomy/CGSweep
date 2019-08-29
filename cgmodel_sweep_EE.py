@@ -261,6 +261,7 @@ for index, NMol in enumerate(NMol_List):
     #BoxL = Traj_Temp.Init_BoxL[0]
     Traj_Temp = pickleTraj(Traj_List[index])
     BoxL = Traj_Temp.FrameData['BoxL'][0] 
+    
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
