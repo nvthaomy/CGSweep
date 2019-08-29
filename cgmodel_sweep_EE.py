@@ -590,8 +590,8 @@ if RunConvergedCGModel:
             
             
             if ScaleRuns:
-                temp_StepsEquil = NStepsEquil*RunStepScaleList[index]
-                temp_StepsProd  = NStepsProd*RunStepScaleList[index]
+                temp_StepsEquil = NStepsEquil*RunStepScaleList[Sys_Index]
+                temp_StepsProd  = NStepsProd*RunStepScaleList[Sys_Index]
             else:
                 temp_StepsEquil  = NStepsEquil
                 temp_StepsProd   = NStepsProd
@@ -599,14 +599,14 @@ if RunConvergedCGModel:
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
     	    Int.Method.TimeStep = 0.0001 # note: reduced units
-	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+			Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."
-                Int.Run(NStepsEquil)
+                Int.Run(temp_StepsEquil)
                 #Sys.Measures.Reset()
                 print "Now running production runs...."
-                Int.Run(NStepsProd)
+                Int.Run(temp_StepsProd)
                 print "timing:", Int.TimeElapsed
                 print "\n"
             
@@ -622,7 +622,7 @@ if RunConvergedCGModel:
           
             if CheckTimestep:
                 # For final check of the timestep just for check
-                sim.integrate.velverlet.FindTimeStep(Sys, NSteps = 10000, EneFracError = 0.5e-5, Verbose=True)
+                sim.integrate.velverlet.FindTimeStep(Sys, NSteps = 10000, EneFracError = 1.0e-3, Verbose=True)
            
            ### ***************************** STATISTICS *********************************** ###
             if CalcStatistics:
