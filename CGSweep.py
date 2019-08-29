@@ -8,54 +8,51 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-#=================
-TrajFileDir = 'traj'
+TrajFileDir = 'trajectories'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'testMDoptions'
+SpecialName     = 'trialnewcode'
 NumberThreads = 1
-JobRunTime = '700:00:00'
+JobRunTime = '24:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = 12
-CG_Mappings = [1]
+DOP = 50
+CG_Mappings = [10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
-NMolList = [[5,10]]
-TrajList = [['xp0.02_traj_wrapped_mapped','xp0.04_traj_wrapped_mapped']]
-Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble 
-if type(NMolList[0])==list:
-	ExpEnsemble = True
-else:
-	ExpEnsemble = False
+NMolList = [[2,20]]
+TrajList = [['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120']]
+Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
+    
 #------------------------
 #Options for optimization
 #------------------------
-UseWPenalty = False
-StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
+UseWPenalty 		= False
+StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
+UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
+UseLammps 			= False
+UseSim 	 			= True
+ScaleRuns 			= True
+RunStepScaleList 	= [[3,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file 	= 'CG_run_OptSpline_Final_converged_ff.dat' 
 
-UseOMM = True #use openMM to run optimization, but still use lammps for converged run
-UseLammps = False
-ScaleRuns = True
-RunStepScaleList = [[1,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF = False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file = 'ff.dat' 
+StepsEquil 		  	= 10000
+StepsProd 			= 250000
+StepsStride 			= 10
+TimeStep 			= 0.001
 
-StepsEquil = 5
-StepsProd = 150
-StepsStride = 1
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 10.
-
-RunSpline = False
-SplineKnots = 30
-SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt.
+Cut = 30.
+RunSpline = True
+SplineKnots = 7
+SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
+SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
-
-RunGauss = True
+RunGauss = False
 NumberGaussianBasisSets = [1]
 GaussMethod = 1
 
@@ -65,19 +62,33 @@ NPeriods = 1
 PlaneAxis = 0 #0 = x, 1 = y, 2 = z
 PlaneLoc = 0.
 
-#-----------------------------------------------------------------------------
-#Options for MD on convered CG model (MD steps are scaled by RunStepScaleList)
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#Options for MD on converged CG model (MD steps are scaled by RunStepScaleList)
+#------------------------------------------------------------------------------
 NSteps_Min = 1000
 NSteps_Equil = 2e6
 NSteps_Prod = 50e6
+Time_Step = 0.001
 WriteFreq = 5000
 
-#N.S. TODO: Add in option for EE runs
-
 # parameter names and their values; need to specify trajectorylist above 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd','StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty','Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq']
-CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc,UseOMM,UseLammps, StepsEquil, StepsProd,StepsStride,SplineConstSlope,FitSpline,SysLoadFF,force_field_file,UseWPenalty ,Pressure_List,StageCoefs,NSteps_Min,NSteps_Equil ,NSteps_Prod,WriteFreq]
+if type(NMolList[0])==list:
+	ExpEnsemble = True
+else:
+	ExpEnsemble = False
+
+CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol',
+                          'RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods',
+                          'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
+                          'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
+                          'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
+						  'UseSim', 'SplineOption','Time_Step','TimeStep']
+CGModel_Parameters     = [Cut, SplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
+                          RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
+                          PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
+                          StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
+                          Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
+						  UseSim, SplineOption,Time_Step,TimeStep]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -144,11 +155,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         for subdir, dirs, files in os.walk(source):
             for file in files:
                 #print (file)
-                if file.endswith(".lammpstrj"):
+              if file.endswith(".lammpstrj"):
 			if file.split(".lammpstrj")[0] in Traj:
                     		#print(os.path.join(cwd,RunDirName,file))
                     		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-                if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+              if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
@@ -158,7 +169,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         copyfile(os.path.join(cwd,TrajFileDir,str(Traj+'.lammpstrj')),os.path.join(cwd,RunDirName,str(Traj+'.lammpstrj')))
         for subdir, dirs, files in os.walk(source):
             for file in files:
-                if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
             
     # move into new directory
@@ -185,29 +196,20 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 	    else:
 		param_value = "[{}]".format(param_value[TrajListInd])
 	if 'Pressure_List' in param_name:
-            if ExpEnsemble:
-                param_value = str(param_value[TrajListInd])
-            else:
-                param_value = "[{}]".format(param_value[TrajListInd])
+	    if UseWPenalty:	
+	        if ExpEnsemble:
+        	        param_value = str(param_value[TrajListInd])
+            	else:
+                	param_value = "[{}]".format(param_value[TrajListInd])
+	    else:
+		param_value = "[]"
         if 'force_field_file' in param_name:
 	    param_value = "'{}'".format(param_value)
 
         temp_CGModel = temp_CGModel.replace((str(param_name)+'_DUMMY'), str(param_value))
     
     # Assign the number of Gaussian in basis set 
-    temp_CGModel = temp_CGModel.replace('NumberGaussians_DUMMY', str(NumberGauss))
-    
-    
-    #if NumberGauss == 2:
-    #    temp_CGModel = temp_CGModel.replace('Use2ndGaussian_DUMMY', 'True')
-    #    temp_CGModel = temp_CGModel.replace('Use3rdGaussian_DUMMY', 'False')
-    #elif NumberGauss == 3:
-    #    temp_CGModel = temp_CGModel.replace('Use2ndGaussian_DUMMY', 'True')
-    #    temp_CGModel = temp_CGModel.replace('Use3rdGaussian_DUMMY', 'True')
-    #else:
-    #    temp_CGModel = temp_CGModel.replace('Use2ndGaussian_DUMMY', 'False')
-    #    temp_CGModel = temp_CGModel.replace('Use3rdGaussian_DUMMY', 'False')
-    
+    temp_CGModel = temp_CGModel.replace('NumberGaussians_DUMMY', str(NumberGauss))  
     temp_CGModel = temp_CGModel.replace('CGMap_DUMMY', str(CGMap))
     temp_CGModel = temp_CGModel.replace('UseExpandedEnsemble_DUMMY', str(ExpEnsemble))
     
@@ -238,8 +240,8 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 ''' ********************************************************************************* '''
 ''' ********* THE CODE THAT CALLS THE ABOVE FUNCTIONS TO GENERATE CG RUNS *********** '''
 ''' ********************************************************************************* '''
-if UseOMM == UseLammps:
-	raise Exception('UseOMM and UseLammps cannot have the same value')
+if UseOMM == UseLammps and UseOMM == UseSim:
+	raise Exception('UseOMM, UseSim and UseLammps cannot all have the same value')
 if RunSpline == RunGauss:
 	raise Exception('RunSpline and RunGauss cannot have the same value')
 if UConst > 0 and not UseOMM:
@@ -277,7 +279,7 @@ elif ExpEnsemble == True:
     for i,Traj in enumerate(TrajList): # for ExpEnsemble, expects TrajList to be a list-of-list!
         for CGMap in CG_Mappings: # The monomer mapping ratio
             if RunSpline:
-		NMol_str = [str(NMol) for NMol in NMolList[i]] 
+                NMol_str = [str(NMol) for NMol in NMolList[i]] 
                 RunDirName = str('ExpEns_NMol_{}_CGMap_{}_Spline_{}'.format('_'.join(NMol_str),CGMap,SpecialName))
                 RunName = RunDirName
                 NumberGauss = 1
@@ -285,9 +287,9 @@ elif ExpEnsemble == True:
                 CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
                                             CGMap, RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
             if RunGauss:
-		NMol_str = [str(NMol) for NMol in NMolList[i]]
+                NMol_str = [str(NMol) for NMol in NMolList[i]]
                 for NumberGauss in NumberGaussianBasisSets:
-		    RunDirName = str('ExpEns_NMol_{}_CGMap_{}_GaussBasis_{}_{}'.format('_'.join(NMol_str),CGMap,NumberGauss,SpecialName))
+                    RunDirName = str('ExpEns_NMol_{}_CGMap_{}_GaussBasis_{}_{}'.format('_'.join(NMol_str),CGMap,NumberGauss,SpecialName))
                     RunName = RunDirName
                     temp_RunSpline = False
                     # Create the CG directory

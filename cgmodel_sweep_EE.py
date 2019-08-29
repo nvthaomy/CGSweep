@@ -26,6 +26,7 @@ SrelName = "CG_run"
 sim.export.lammps.InnerCutoff = 0.00001
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
+sim.export.lammps.TableInterpolationStyle = 'linear' # More robust than spline for highly CG-ed systems
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
 
 sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
@@ -45,11 +46,12 @@ else:
     UseExternal = False
 
 # md iterations
-StepsEquil = StepsEquil_DUMMY
-StepsProd = StepsProd_DUMMY
-StepsStride = StepsStride_DUMMY
-RunStepScaleList = RunStepScaleList_DUMMY
-GaussMethod = GaussMethod_DUMMY
+StepsEquil 			= StepsEquil_DUMMY
+StepsProd 			= StepsProd_DUMMY
+StepsStride 		= StepsStride_DUMMY
+ScaleRuns 			= ScaleRuns_DUMMY
+RunStepScaleList 	= RunStepScaleList_DUMMY
+GaussMethod 		= GaussMethod_DUMMY
 
 Cut = Cut_DUMMY
 FixBondDist0 = True
@@ -62,12 +64,18 @@ LDKnots    = 10
 # Change how Gaussian potentials are handled
 
 NumberGaussians = NumberGaussians_DUMMY
-ScaleRuns = ScaleRuns_DUMMY
 
 RunSpline = RunSpline_DUMMY
 SplineKnots = SplineKnots_DUMMY
-SplineConstSlope = SplineConstSlope_DUMMY # Turns on Constant slope for first opt.; then shuts it off for final opt. 
+
+# Spline options
+#   Option1 = Constant slope 
+#   Option2 = Constant slope, then turn-off
+#   Option3 = Slope unconstrained
+
+SplineOption = SplineOption_DUMMY 
 FitSpline = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
+
 # N.S. TODO:
 # Add in option to specify the Spline inner slope (i.e. 2kbTperA)
 # Add in Spline fit parameters (i.e. make stronger or longer ranged based on mapping)
@@ -76,7 +84,7 @@ force_field_file = force_field_file_DUMMY
 UseWPenalty = UseWPenalty_DUMMY
 UseLammps = UseLammps_DUMMY 
 UseOMM = UseOMM_DUMMY
-UseSim = False
+UseSim = UseSim_DUMMY
 WriteTraj = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
 RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
@@ -111,9 +119,9 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     if RunSpline:
         PSpline = sim.potential.PairSpline(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
                                            NKnot = SplineKnots, Label = 'Spline', 
-                                           NonbondEneSlope = "0.5kTperA", BondEneSlope = "0.5kTperA")
+                                           NonbondEneSlope = "0.25kTperA", BondEneSlope = "0.25kTperA")
         if FitSpline:
-            Max = 8.
+            Max = 4.
             decay = 0.1
             ArgVals = np.linspace(0,Cut,100)
             ArgValsSq = np.multiply(ArgVals,ArgVals)
@@ -121,7 +129,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
             PSpline.FitSpline(ArgVals, EneVals, Weights = None, MaxKnot = None, MinKnot = None)
         
         PSpline.KnotMinHistFrac = 0.005
-        if SplineConstSlope == False:
+        if SplineOption == 'Option3':
             PSpline.EneSlopeInner = None                             
         
         FFList.append(PSpline)
@@ -209,7 +217,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     # lock and load
     Sys.Load()
 
-    Sys.BoxL[:] = BoxL
+    Sys.BoxL = BoxL
 
     #initial positions and velocities
     sim.system.positions.CubicLattice(Sys)
@@ -221,7 +229,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     Int.Method = Int.Methods.VVIntegrate        
     Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    Int.Method.TimeStep = 0.0001 # note: reduced units
+    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
     Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
@@ -260,7 +268,7 @@ for index, NMol in enumerate(NMol_List):
     #Traj_Temp = sim.traj.Lammps(Traj)
     #BoxL = Traj_Temp.Init_BoxL[0]
     Traj_Temp = pickleTraj(Traj_List[index])
-    BoxL = Traj_Temp.FrameData['BoxL'][0] 
+    BoxL = Traj_Temp.FrameData['BoxL'] 
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
@@ -292,12 +300,6 @@ for index, NMol in enumerate(NMol_List):
         PBond.Dist0.Fixed = True
         PBond.Dist0 = PBondDist0
     
-    if RunSpline == False:
-        for g in range(NumberGaussians):
-            PLJGauss_Temp = SysTemp.ForceField[g]
-            PLJGauss_Temp.FreezeSpecificParam([0,1,4]) # Fix all LJ part to 0. and Gauss offset to 0.
-            PLJGauss_Temp.MinHistFrac = 0.01         
-    
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
@@ -328,7 +330,8 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-	W = SysTemp.NDOF - 3*Press*BoxL**3
+	Volume = np.prod(BoxL)
+	W = SysTemp.NDOF - 3*Press*Volume
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
@@ -356,16 +359,26 @@ if RunOptimization:
     Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
     
     if RunSpline:
-        if SplineConstSlope: # First optimize with constant slope, need to adjust NonBondEne and BondEne Slopes
-            OptimizerPrefix = ("{}_OptSpline_ConstSlope".format(SrelName))
-        else: # otherwise run with non-constant slope (can be dangerous for the core region)
+    
+        ''' Run Splone: There are 3 options currently.
+        
+            Option1: Run with a constant slope
+            Option2: Run with a constant slope, then turnoff
+            Option3: Run entirely without a constant slope
+        
+        '''
+        if SplineOption == 'Option1' or SplineOption == 'Option3':
             OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
+        elif SplineOption == 'Option2':
+            OptimizerPrefix = ("{}_OptSpline_ConstSlope".format(SrelName))
+        else:
+            print('No spline option recognized or defined!')
         
         # opt. 
         RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs)
         
         
-        if SplineConstSlope:
+        if SplineOption == 'Option2':
             for SysFF in SysFFList:
                 PSpline = SysFF[0][1]
 		print "Relaxing spline knot constraints" 
@@ -407,7 +420,7 @@ if RunOptimization:
                 
                 for g, PGauss in enumerate(FFGaussians):
                     PGauss.FreezeSpecificParam([0,1,4]) # Freeze LJ and Gauss offsets
-            
+           	    PGauss.MinHistFrac = 0.01 
             # opt. 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
             RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
@@ -436,6 +449,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == index: # unfix parameters
                             PGauss.B.Fixed = False
                             PGauss.Kappa.Fixed = False
@@ -484,6 +498,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == 0: # on the first gaussian; opt this one alone for now
                             OptimizerPrefix = ("{}_OptGauss{}".format(SrelName,gID))
                             
@@ -521,20 +536,34 @@ if RunOptimization:
 ''' ***************************************************************** '''                
              
 if RunConvergedCGModel:
-    UseLammpsMD     = True
-    UseSim          = False
-    CalcPress       = True
-    OutputDCD       = True
-    CalcStatistics  = True
-    ReturnTraj      = False
-    CheckTimestep   = True
+    UseLammpsMD     		= True
+    UseSim          		= False
+    CalcPress       		= True
+    CalcRg          		= True
+    CalcRee         		= True
+    OutputDCD       		= True
+    CalcStatistics 			= True
+    ReturnTraj     			= False
+    CheckTimestep  			= True
+    PBC             		= True
+    CnvDATA2PDB				= True	# Convert lammps.data to .pdb using MDAnalysis
+    Make_molecules_whole    = True  # Uses MDTraj to make molecules whole
+    SaveCalculationsToFile 	= True
+
+    import matplotlib
+    matplotlib.use("pdf")
+    import matplotlib.pyplot as plt
     import MDAnalysis as mda
-    
+    import mdtraj as md
+    from pymbar import timeseries
+    from HistogramTools import HistogramRee
+    import stats_TrajParse as stats_mod
+    import stats
+
     print (SysList)
     for Sys_Index, Sys in enumerate(SysList):
         print('Running molecular dynamics on converged CG model: {}'.format(Sys.Name))
         os.mkdir(Sys.Name+'_PressData')
-        os.mkdir(Sys.Name+'_RgData')
         
         # Read in force-field
         for subdir, dirs, files in os.walk(os.getcwd()):
@@ -569,23 +598,23 @@ if RunConvergedCGModel:
             
             
             if ScaleRuns:
-                temp_StepsEquil = NStepsEquil*RunStepScaleList[index]
-                temp_StepsProd  = NStepsProd*RunStepScaleList[index]
+                temp_StepsEquil = NStepsEquil*RunStepScaleList[Sys_Index]
+                temp_StepsProd  = NStepsProd*RunStepScaleList[Sys_Index]
             else:
                 temp_StepsEquil  = NStepsEquil
                 temp_StepsProd   = NStepsProd
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    	    Int.Method.TimeStep = 0.0001 # note: reduced units
+    	    Int.Method.TimeStep = Time_Step_DUMMY # note: reduced units
 	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."
-                Int.Run(NStepsEquil)
+                Int.Run(temp_StepsEquil)
                 #Sys.Measures.Reset()
                 print "Now running production runs...."
-                Int.Run(NStepsProd)
+                Int.Run(temp_StepsProd)
                 print "timing:", Int.TimeElapsed
                 print "\n"
             
@@ -601,9 +630,12 @@ if RunConvergedCGModel:
           
             if CheckTimestep:
                 # For final check of the timestep just for check
-                sim.integrate.velverlet.FindTimeStep(Sys, NSteps = 10000, EneFracError = 0.5e-5, Verbose=True)
+                sim.integrate.velverlet.FindTimeStep(Sys, NSteps = 10000, EneFracError = 1.0e-3, Verbose=True)
            
-           ### ***************************** STATISTICS *********************************** ###
+            ### **************************************************************************** ###
+            ### ***************************** STATISTICS *********************************** ###
+            ### **************************************************************************** ###
+            
             if CalcStatistics:
                 def statistics_py(DataFilename,Col):
                     ''' Do data using stats.py '''
@@ -613,90 +645,344 @@ if RunConvergedCGModel:
                     nsamples,(min,max),mean,semcc,kappa,unbiasedvar,autocor = stats.doStats(warmupdata,proddata)
 
                     return ([nsamples,(min,max),mean,semcc,kappa,unbiasedvar,autocor])
-                
-                import stats
-                
-                ''' Calculate Rg Data '''
-                print("Calculating Rg Statistics...")
-                RgMean          = []
-                RgVar           = []
-                RgSamples       = []
-                RgCorr          = []
-                samplecount        = 0
+                    
+                def pymbar_statistics(dataset):
+                    ''' Do PyMbar Analysis on the data using timeseries '''
+                    dataset = np.asarray(dataset).flatten()
+                    dataset_temp = dataset
+                    pymbar_timeseries = (timeseries.detectEquilibration(dataset)) # outputs [t0, g, Neff_max] 
+                    t0 = pymbar_timeseries[0] # the equilibrium starting indices
+                    Data_equilibrium = dataset#[t0:]
+                    g = pymbar_timeseries[1] # the statistical inefficiency, like correlation time
+                    indices = timeseries.subsampleCorrelatedData(Data_equilibrium, g=g) # get the indices of decorrelated data
+                    dataset = Data_equilibrium[indices] # Decorrelated Equilibrated data
+                    dataset = np.asarray(dataset)
+                    P_autocorrelation = timeseries.normalizedFluctuationCorrelationFunction(dataset, dataset, N_max=None, norm=True)
+                    # Calculate using stats.py
+                    warmupdata = 0
+                    ''' Use stats.py to calculate averages '''
+                    nsamples,(min,max),mean,semcc,kappa,unbiasedvar,autocor = stats_mod.doStats(warmupdata,dataset_temp)
 
+                    return ([np.mean(dataset),np.var(dataset),np.sqrt(np.divide(np.var(dataset),len(dataset))),len(indices), len(Data_equilibrium), g, mean, semcc, kappa])
+                
+                import stats_TrajParse as stats
+                # Walk through and find trajectory for specific system
                 for subdir, dirs, files in os.walk(os.getcwd()):
                     for file in files:
-                        print(file)
                         if '.dcd' in file and str(Sys.Name) in file: # look for the current trajectory file
                             LammpsData  = Sys.Name+'_lammps.data'
                             LammpsTrj   = Sys.Name+'_'+TrajFile
-                            print (LammpsData)
-                            print('TRJ')
+                            print('*************')
+                            print('**** TRJ ****')
+                            print('*************')
                             print(LammpsTrj)
-                            u = mda.Universe(LammpsData,LammpsTrj)
+                            print (LammpsData)
                             
-                            NMol = Sys.NMol
-                            Atoms_Molecule = []
-                            Header = []
-                            Header.append('# Step')
-                            for i in range(NMol):
-                                molID = i+1
-                                Atoms_Molecule.append(u.select_atoms("resid {}".format(molID)))
-                                Header.append('Rg_{}'.format(molID))
+                            SaveFilename = Sys.Name+'_RgReeData'
+                            
+                            if SaveCalculationsToFile: os.mkdir(SaveFilename)
+                            
+                            if CnvDATA2PDB:
+                                # Converts LAMMPS.data to .pdb with structure information
+                                u = mda.Universe(LammpsData)
+                                gr = u.atoms
+                                gr.write(Sys.Name+'.pdb')
+                                top_file = Sys.Name+'.pdb'
+                            
+                            ''' Load in trajectory file '''
+                            traj = md.load(LammpsTrj,top=top_file)#, atom_indices=atoms_list)
+                            
+                            print ("Unit cell:")
+                            print ("	{}".format(traj.unitcell_lengths[0])) # List of the unit cell on each frame
+                            print ('Number of frames:')
+                            print ("	{}".format(traj.n_frames))
+                            print ('Number of molecule types:')
+                            print ("	{}".format(traj.n_chains))
+                            print ('Number of molecules:')
+                            print ("	{}".format(traj.n_residues))
+                            numberpolymers = int(traj.n_residues)
+                            MoleculeResidueList = range(0,numberpolymers) # important for Rg calculation
+                            print ('Number of atoms:')
+                            print ("	{}".format(traj.n_atoms))
+                            DOP = int(traj.n_atoms/numberpolymers)
+                            print ("Atom 1 coordinates:")
+                            print ('	{}'.format(traj.xyz[0][0]))
+                            print ('Number of polymers:')
+                            print ("	{}".format(numberpolymers))
+                            print ('Degree of polymerization:')
+                            print ("	{}".format(DOP))
+                            
+                            # Get atom ends for Ree
+                            cnt = 0
+                            ReeAtomIndices = [] # remember atom ID - 1 is the atom index
+                            temp = []
+                            for i in range(numberpolymers*DOP):
+                                if cnt == 0:
+                                    temp.append(i)
+                                    cnt += 1
+                                elif cnt == (DOP-1):
+                                    temp.append(i)
+                                    ReeAtomIndices.append(temp)
+                                    temp = []
+                                    cnt = 0
+                                else:
+                                    cnt += 1
+                                    
+                            print(ReeAtomIndices)
+                            
+                            if Make_molecules_whole: # generates bonding list for each molecule
+                                bonds = []
+                                cnt = 0
+                                for i in range(numberpolymers*DOP):
+                                    cnt += 1
+                                    if cnt == (DOP):
+                                        pass
+                                        cnt = 0
+                                    else:
+                                        bonds_temp = [i,i+1]
+                                        bonds.append(bonds_temp)
+                                if CnvDATA2PDB: # Automatically finds the bonds from the topology file
+                                    bonds = None
+                                else:
+                                    bonds = np.asarray(bonds)
+                                traj.make_molecules_whole(inplace=True, sorted_bonds=bonds)
+                            
+                            if SaveCalculationsToFile == True: os.chdir(SaveFilename)
+                            
+                            ReeTimeseries = []
+                            RgTimeseries = []
+                            Ree_averages = []
+                            Rg_avg_stats = []
+                            Rg_averages = []
+                            Ree_avg_stats = []
+                            ''' Calculate Radius-of-gyration '''
+                            if CalcRg:
+                                print('Calculating radius-of-gyration...')
+                                # Compute the radius-of-gyration
+                                ElementDictionary ={
+                                            "carbon": 12.01,
+                                            "hydrogen": 1.008,
+                                            "oxygen": 16.00,
+                                            "nitrogen": 14.001,
+                                            "virtual site": 1.0,
+                                            "virtual_site": 1.0,
+                                            "sodium": "na+",
+                                            }
+
+                                Rg_list = []
+                                Rg_Ave_list = []
+
+                                for i,molecule in enumerate(MoleculeResidueList):
+                                    atom_indices = traj.topology.select('resid {}'.format(i)) #and (resname UNL) or (resneme LEF) or (resname RIG)
+                                    mass_list = []
+                                    for index in atom_indices:
+                                        temp = ElementDictionary[str(traj.topology.atom(index).element)]
+                                        mass_list.append(temp)
+                                    
+                                    print ('Number of atoms in molecule {}'.format(i))
+                                    print ('	{}'.format(len(atom_indices)))
+                                    Rg = md.compute_rg(traj.atom_slice(atom_indices),np.asarray(mass_list))
+                                    RgTimeseries.append(Rg)
+                                    
+                                    np.savetxt('Rg_out_mdtraj_molecule_{}.dat'.format((i)), Rg)
+
+                                    stats_out = pymbar_statistics(Rg)
+                                    
+                                    RgAvg = stats_out[0]
+                                    RgVariance = stats_out[2]**2
+                                    CorrTime = stats_out[5]
+                                    Rg_averages.append([RgAvg,RgVariance,CorrTime])
+                                    Rg_avg_stats.append([stats_out[6],stats_out[7],stats_out[8]])
+                                    
+                                    print ('The radius of gyration for molecule {} is:'.format(i))
+                                    print ('	{0:2.4f} +/- {1:2.5f}'.format(RgAvg,np.sqrt(RgVariance)))
+                                    
+                                    ''' Plot the radius of gyration '''
+                                    plt.plot(Rg, "k-")
+                                    plt.xlabel('timestep')
+                                    plt.ylabel('Radius-of-gryation')
+                                    plt.savefig("Rg_molecule_{}.pdf".format(i),bbox_inches='tight')
+                                    plt.close()
+                        
+                            if CalcRee:
+                                print('Calculating end-to-end distance...')
+                                for i,temp_pair in enumerate(ReeAtomIndices):
+                                    EndEndDist = md.compute_distances(traj,atom_pairs=[temp_pair], periodic=False, opt=True)
+                                    ReeTimeseries.append(EndEndDist)
+                                    
+                                    stats_out = pymbar_statistics(EndEndDist)
+                                    
+                                    ReeAvg = stats_out[0]
+                                    ReeVariance = stats_out[2]**2
+                                    CorrTime = stats_out[5]
+                                    Ree_averages.append([ReeAvg,ReeVariance,CorrTime])
+                                    Ree_avg_stats.append([stats_out[6],stats_out[7],stats_out[8]])
+                                    
+                                    print ('The End-end distance for molecule {} is:'.format(i))
+                                    print ('	{0:2.4f} +/- {1:2.5f}'.format(ReeAvg,np.sqrt(ReeVariance)))
+                                    
+                                    ''' Plot the Ree '''
+                                    plt.plot(EndEndDist, "k-")
+                                    plt.xlabel('timestep')
+                                    plt.ylabel('Ree')
+                                    plt.savefig("Ree_{}.pdf".format(i),bbox_inches='tight')
+                                    plt.close()
+
+                                    np.savetxt('Ree_{}.dat'.format(i), EndEndDist)
+                            
+                            # Move backup to working directory
+                            if SaveCalculationsToFile == True: os.chdir("..")
+                        
+                            # Continue saving histograms to directories
+                            if SaveCalculationsToFile == True: os.chdir(SaveFilename)
+                            
+                            if CalcRee:
+                                ''' Histogram Ree '''
+                                Ree_temp = []
+                                for i in ReeTimeseries:
+                                    Ree_temp.extend(i)
+                                Ree_data = np.asarray(Ree_temp)
+                                HistogramRee(Ree_data, number_bins=25, DoBootStrapping=True, ShowFigures=False, NormHistByMax=True, 
+                                                    TrimRee=False, ReeCutoff=1.5, ReeMinimumHistBin=0., scale=1., gaussian_filter=False, sigma=2 )
+
+                                ''' Plot all the Ree '''
+                                for EndEndDist in ReeTimeseries:
+                                    plt.plot(EndEndDist)
+                                    plt.xlabel('timestep A.U.')
+                                    plt.ylabel('Ree')
+                                plt.savefig("Ree_total.pdf",bbox_inches='tight')
+                                plt.close()
+                        
+                            if CalcRg:
+                                ''' Plot all the Rg '''
+                                for RgDist in RgTimeseries:
+                                    plt.plot(RgDist)
+                                    plt.xlabel('timestep A.U.')
+                                    plt.ylabel('Rg')
+                                plt.savefig("Rg_total.pdf",bbox_inches='tight')
+                                plt.close()
+
+                            print ('****** TOTALS *******')
+
+                            ''' Calculate the ensemble averages '''
+                            stats_out = open('stats_out.data','w')
+                            if CalcRee:
+                                ReeTotal = 0
+                                Stats_ReeTotal = 0 
+                                ReeVarianceTotal = 0
+                                Stats_ReeVarTotal = 0 
+                                CorrTime = []
+                                Stats_CorrTime = []
+                                for index, Ree in enumerate(Ree_averages):
+                                    ReeTotal = ReeTotal + Ree[0]
+                                    ReeVarianceTotal = ReeVarianceTotal + Ree[1]
+                                    CorrTime.append(Ree[2])
+                                    
+                                    #from stats.py script
+                                    Stats_ReeTotal = Stats_ReeTotal + Ree_avg_stats[index][0]
+                                    Stats_ReeVarTotal = Stats_ReeVarTotal + (Ree_avg_stats[index][1])**2
+                                    Stats_CorrTime.append(Ree_avg_stats[index][2])
+                                    
+
+                                ReeAverage = ReeTotal/len(Ree_averages)
+                                ReeStdErr  = np.sqrt(ReeVarianceTotal/len(Ree_averages))
+                                ReeAvgCorrTime = np.average(CorrTime)
+                                ReeCorrTimeStdErr = np.sqrt(np.var(CorrTime)/len(CorrTime))
+                                Stats_ReeAverage = Stats_ReeTotal/len(Ree_averages)
+                                Stats_StdErr = np.sqrt(Stats_ReeVarTotal/len(Ree_averages))
+                                Stats_AvgCorrTime = np.average(Stats_CorrTime)
+                                Stats_CorrTimeStdErr = np.sqrt(np.var(Stats_CorrTime)/len(CorrTime))
+                                print ('Total End-end distance average is: {0:4.4f} +/- {1:3.6f}'.format(ReeAverage,ReeStdErr))
+                                print ('Total End-end distance avg. correlation time: {0:5.4f} +/- {1:5.6f}'.format(ReeAvgCorrTime, ReeCorrTimeStdErr))
+                                print ('STATS: Total Ree distance avg is : {0:4.4f} +/- {1:3.6f}'.format(Stats_ReeAverage,Stats_StdErr))
+                                print ('STATS: Total Ree Corr. Time avg is : {0:4.4f} +/- {1:3.6f}'.format(Stats_AvgCorrTime,Stats_CorrTimeStdErr))
+                                stats_out.write('Total End-end distance average is: {0:4.4f} +/- {1:3.6f}\n'.format(ReeAverage,ReeStdErr))
+                                stats_out.write('Total End-end distance avg. correlation time: {0:5.4f} +/- {1:5.6f}\n'.format(ReeAvgCorrTime, ReeCorrTimeStdErr))
+                                stats_out.write('STATS: Total Ree distance avg is : {0:4.4f} +/- {1:3.6f}\n'.format(Stats_ReeAverage,Stats_StdErr))
+                                stats_out.write('STATS: Total Ree Corr. Time avg is : {0:4.4f} +/- {1:3.6f}\n'.format(Stats_AvgCorrTime,Stats_CorrTimeStdErr))
                                 
-                            Rg_List = []
-                            step = 0
-                            for ts in u.trajectory:
-                                step += 1
-                                Rg_temp = []
-                                Rg_temp.append(step)
-                                for molecule in Atoms_Molecule:
-                                    Rg_temp.append(molecule.radius_of_gyration())
-                                Rg_List.append(Rg_temp)
-                            
-                            Rg_Array = np.asarray(Rg_List)
-                            np.savetxt(Sys.Name+'_Rg.data',Rg_Array,header='-'.join(Header))
-                            
-                            for i in range(NMol): # Calculate for each molecule
-                                molID = i+1 
-                                stats_out = statistics_py(os.path.join(os.getcwd(),(Sys.Name+'_Rg.data')),molID)
-                                RgMean.append(stats_out[2])
-                                RgVar.append(stats_out[5])
-                                RgCorr.append(stats_out[4])
+                            if CalcRg:
+                                RgTotal = 0
+                                Stats_RgTotal = 0
+                                RgVarianceTotal = 0
+                                Stats_RgVarTotal = 0
+                                CorrTime = []
+                                Stats_RgCorrTime = []
+                                for index, Rg in enumerate(Rg_averages):
+                                    RgTotal = RgTotal + Rg[0]
+                                    RgVarianceTotal = RgVarianceTotal + Rg[1]
+                                    CorrTime.append(Rg[2]) 
+                                    
+                                    #from stats.py script
+                                    Stats_RgTotal = Stats_RgTotal + Rg_avg_stats[index][0]
+                                    Stats_RgVarTotal = Stats_RgVarTotal + (Rg_avg_stats[index][1])**2
+                                    Stats_RgCorrTime.append(Rg_avg_stats[index][2])
+                                    
+                                RgAverage = RgTotal/len(Rg_averages)
+                                RgStdErr  = np.sqrt(RgVarianceTotal/len(Rg_averages))
+                                RgAvgCorrTime = np.average(CorrTime)
+                                RgCorrTimeStdErr = np.sqrt(np.var(CorrTime)/len(CorrTime))
+                                Stats_RgAverage = Stats_RgTotal/len(Rg_averages)
+                                Stats_RgStdErr = np.sqrt(Stats_RgVarTotal/len(Rg_averages))
+                                Stats_AvgRgCorrTime = np.average(Stats_RgCorrTime)
+                                Stats_RgCorrTimeStdErr = np.sqrt(np.var(Stats_RgCorrTime)/len(CorrTime))
+                                print ('Total Rg average is: {0:2.3f} +/- {1:2.5f}'.format(RgAverage,RgStdErr))
+                                print ('Total Rg avg. correlation time: {0:5.4f} +/- {1:5.6f}'.format(RgAvgCorrTime, RgCorrTimeStdErr))
+                                print ('STATS: Total Rg distance avg is : {0:4.4f} +/- {1:3.6f}'.format(Stats_RgAverage,Stats_RgStdErr))
+                                print ('STATS: Total Rg Corr. Time avg is : {0:4.4f} +/- {1:3.6f}'.format(Stats_AvgRgCorrTime,Stats_RgCorrTimeStdErr))
+                                stats_out.write('Total Rg average is: {0:2.3f} +/- {1:2.5f}\n'.format(RgAverage,RgStdErr))
+                                stats_out.write('Total Rg avg. correlation time: {0:5.4f} +/- {1:5.6f}\n'.format(RgAvgCorrTime, RgCorrTimeStdErr))
+                                stats_out.write('STATS: Total Rg distance avg is : {0:4.4f} +/- {1:3.6f}\n'.format(Stats_RgAverage,Stats_RgStdErr))
+                                stats_out.write('STATS: Total Rg Corr. Time avg is : {0:4.4f} +/- {1:3.6f}\n'.format(Stats_AvgRgCorrTime,Stats_RgCorrTimeStdErr))
+                                
+                                
+                            # Calculate alpha value
+                            if RgAverage != 0 and ReeAverage != 0:
+                                alpha = ReeAverage/RgAverage
+                                alpha_std = np.sqrt((1/RgAverage)**2*RgStdErr**2 + (ReeAverage/RgAverage**2)**2*ReeStdErr**2)
+                                Stats_alpha = Stats_ReeAverage/Stats_RgAverage
+                                Stats_alpha_std = np.sqrt((1/Stats_RgAverage)**2*Stats_RgStdErr**2 + (Stats_ReeAverage/Stats_RgAverage**2)**2*Stats_StdErr**2)
+                                print ('The alpha value: Ree/Rg is: {0:4.4f} +/- {1:4.4f}'.format(alpha,alpha_std))
+                                print ('STATS: The alpha value: Ree/Rg is: {0:4.4f} +/- {1:4.4f}'.format(Stats_alpha,Stats_alpha_std))
+                                stats_out.write('The alpha value: Ree/Rg is: {0:4.4f} +/- {1:4.4f}\n'.format(alpha,alpha_std))
+                                stats_out.write('STATS: The alpha value: Ree/Rg is: {0:4.4f} +/- {1:4.4f}\n'.format(Stats_alpha,Stats_alpha_std))
+                                
+                            # Move backup to working directory
+                            if SaveCalculationsToFile == True: os.chdir("..")
                 
-                RgCorrAvg = np.average(RgCorr)
-                RgCorrVar = np.var(RgCorr)
-                RgCorrStdErr = np.sqrt(RgCorrVar/len(RgCorr))
-                RgAvg = np.average(RgMean)
-                RgVar = np.sum(RgVar)/NMol**2
-                RgStdErr = np.sqrt(RgVar*RgCorrAvg/step/NMol) # Neglected factoring in the standard error from RgCorrAvg.
-                
+
                 ''' Calculate Pressure '''
-                print("Calculating Pressure Statistics...")
-                PressMean          = []
-                PressVar           = []
-                PressSamples       = []
-                PressCorr          = []
-                samplecount        = 0
-                
-                for subdir, dirs, files in os.walk(os.path.join(os.getcwd(),Sys.Name+'_PressData')):
-                    for file in files:
-                        stats_out = statistics_py(os.path.join(os.getcwd(),Sys.Name+'_PressData',file),1)
-                        PressMean.append(stats_out[2])
-                        PressVar.append(stats_out[5])
-                        PressCorr.append(stats_out[4])
-                        PressStdErr = stats_out[3]
-                
-                PressCorrAvg = np.average(PressCorr)
-                PressCorrVar = np.var(PressCorr)
-                PressCorrStdErr = np.sqrt(PressCorrVar/len(RgCorr))
-                PressAvg = np.average(PressMean)
-                PressVar = np.sum(PressVar)
-                PressStdErr = PressStdErr
+                if CalcPress:
+                    print("Calculating Pressure Statistics...")
+                    PressMean          = []
+                    PressVar           = []
+                    PressSamples       = []
+                    PressCorr          = []
+                    samplecount        = 0
+                    
+                    for subdir, dirs, files in os.walk(os.path.join(os.getcwd(),Sys.Name+'_PressData')):
+                        for file in files:
+                            stats_out = statistics_py(os.path.join(os.getcwd(),Sys.Name+'_PressData',file),1)
+                            PressMean.append(stats_out[2])
+                            PressVar.append(stats_out[5])
+                            PressCorr.append(stats_out[4])
+                            PressStdErr = stats_out[3]
+                    
+                    PressCorrAvg = np.average(PressCorr)
+                    PressCorrVar = np.var(PressCorr)
+                    PressCorrStdErr = np.sqrt(PressCorrVar/len(PressCorr))
+                    PressAvg = np.average(PressMean)
+                    PressVar = np.sum(PressVar)
+                    PressStdErr = PressStdErr
 
                 
                 
                 with open(Sys.Name+'_Statistics.dat','w') as g:
-                    g.write('#  Avg.    Var.    StdErr.     Corr.   Var.    StdErr.\n')
-                    g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(RgAvg,RgVar,RgStdErr,RgCorrAvg,RgCorrVar,RgCorrStdErr))
-                    g.write('Press     {0:8.4e}      {1:8.4e}      {2:8.4e}      {3:8.4e}      {4:8.4e}      {5:8.4e}\n'.format(PressAvg,PressVar,PressStdErr,PressCorrAvg,PressCorrVar,PressCorrStdErr))
+                    g.write('#  Avg.    Pseudo-Var.    StdErr.     Corr.   Var.    StdErr.\n')
+                    if CalcRg:
+                        g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(Stats_RgAverage,Stats_RgVarTotal,Stats_RgStdErr,Stats_AvgRgCorrTime,np.var(Stats_RgCorrTime),Stats_RgCorrTimeStdErr))
+                    if CalcRee:
+                        g.write('Ree       {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(Stats_ReeAverage,Stats_ReeVarTotal,Stats_StdErr,Stats_AvgCorrTime,np.var(Stats_CorrTime),Stats_CorrTimeStdErr))
+                    if CalcPress:
+                        g.write('Press     {0:8.4e}      {1:8.4e}      {2:8.4e}      {3:8.4e}      {4:8.4e}      {5:8.4e}\n'.format(PressAvg,PressVar,PressStdErr,PressCorrAvg,PressCorrVar,PressCorrStdErr))
+
