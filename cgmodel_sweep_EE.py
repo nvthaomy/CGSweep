@@ -299,12 +299,6 @@ for index, NMol in enumerate(NMol_List):
         PBond.Dist0.Fixed = True
         PBond.Dist0 = PBondDist0
     
-    if RunSpline == False:
-        for g in range(NumberGaussians):
-            PLJGauss_Temp = SysTemp.ForceField[g]
-            PLJGauss_Temp.FreezeSpecificParam([0,1,4]) # Fix all LJ part to 0. and Gauss offset to 0.
-            PLJGauss_Temp.MinHistFrac = 0.01         
-    
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
@@ -424,7 +418,7 @@ if RunOptimization:
                 
                 for g, PGauss in enumerate(FFGaussians):
                     PGauss.FreezeSpecificParam([0,1,4]) # Freeze LJ and Gauss offsets
-            
+           	    PGauss.MinHistFrac = 0.01 
             # opt. 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
             RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
@@ -453,6 +447,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == index: # unfix parameters
                             PGauss.B.Fixed = False
                             PGauss.Kappa.Fixed = False
@@ -501,6 +496,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == 0: # on the first gaussian; opt this one alone for now
                             OptimizerPrefix = ("{}_OptGauss{}".format(SrelName,gID))
                             

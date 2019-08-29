@@ -81,6 +81,7 @@ NSteps_Equil = 2e6
 NSteps_Prod = 50e6
 Time_Step = 0.001
 WriteFreq = 5000
+
 # parameter names and their values; need to specify trajectorylist above 
 CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd','StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty','Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq','Time_Step','TimeStep']
 CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc,UseOMM,UseLammps, StepsEquil, StepsProd,StepsStride,SplineConstSlope,FitSpline,SysLoadFF,force_field_file,UseWPenalty ,Pressure_List,StageCoefs,NSteps_Min,NSteps_Equil ,NSteps_Prod,WriteFreq,Time_Step,TimeStep]
