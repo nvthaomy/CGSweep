@@ -38,8 +38,8 @@ UseOMM = True #use openMM to run optimization, but still use lammps for converge
 UseLammps = False
 ScaleRuns = True
 RunStepScaleList = [1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF = False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file = 'ff.dat' 
+SysLoadFF = True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file = "xp0.04_CGMap_3_2GaussfromSpline_ff.dat" 
 
 StepsEquil = 5
 StepsProd = 150
@@ -154,7 +154,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 			if file.split(".lammpstrj")[0] in Traj:
                     		#print(os.path.join(cwd,RunDirName,file))
                     		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-              if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+              if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
@@ -164,7 +164,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         copyfile(os.path.join(cwd,TrajFileDir,str(Traj+'.lammpstrj')),os.path.join(cwd,RunDirName,str(Traj+'.lammpstrj')))
         for subdir, dirs, files in os.walk(source):
             for file in files:
-                if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
             
     # move into new directory
@@ -191,10 +191,13 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 	    else:
 		param_value = "[{}]".format(param_value[TrajListInd])
 	if 'Pressure_List' in param_name:
-            if ExpEnsemble:
-                param_value = str(param_value[TrajListInd])
-            else:
-                param_value = "[{}]".format(param_value[TrajListInd])
+	    if UseWPenalty:	
+	        if ExpEnsemble:
+        	        param_value = str(param_value[TrajListInd])
+            	else:
+                	param_value = "[{}]".format(param_value[TrajListInd])
+	    else:
+		param_value = "[]"
         if 'force_field_file' in param_name:
 	    param_value = "'{}'".format(param_value)
 
