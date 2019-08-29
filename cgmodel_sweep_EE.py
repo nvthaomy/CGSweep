@@ -110,7 +110,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = 0., FConst = 500., Label = 'Bond')
+                               Dist0 = 0., FConst = 1., Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
