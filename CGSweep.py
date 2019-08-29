@@ -8,17 +8,17 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-TrajFileDir = 'trajectories'
+TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'trialnewcode'
+SpecialName     = 'NoP'
 NumberThreads = 1
 JobRunTime = '24:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = 50
+DOP = 24
 CG_Mappings = [10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 NMolList = [[2,20]]
@@ -38,17 +38,17 @@ RunStepScaleList 	= [[3,1]] # scales the CG runtime for systems in the NMolList,
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
 force_field_file 	= 'CG_run_OptSpline_Final_converged_ff.dat' 
 
-StepsEquil 		  	= 10000
-StepsProd 			= 250000
-StepsStride 			= 10
+StepsEquil 		  	= 5e5
+StepsProd 			= 3e6
+StepsStride 			= 200
 TimeStep 			= 0.001
 
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 30.
+Cut = 10.
 RunSpline = True
-SplineKnots = 7
+SplineKnots = 30
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
