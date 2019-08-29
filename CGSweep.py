@@ -8,55 +8,51 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-TrajFileDir = 'traj'
+TrajFileDir = 'trajectories'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'testMDoptions'
+SpecialName     = 'trialnewcode'
 NumberThreads = 1
-JobRunTime = '700:00:00'
+JobRunTime = '24:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = 12
-CG_Mappings = [1]
+DOP = 50
+CG_Mappings = [10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
-NMolList = [[5,10]]
-TrajList = [['xp0.02_traj_wrapped_mapped','xp0.04_traj_wrapped_mapped']]
-Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble 
-if type(NMolList[0])==list:
-	ExpEnsemble = True
-else:
-	ExpEnsemble = False
+NMolList = [[2,20]]
+TrajList = [['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120']]
+Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
+    
 #------------------------
 #Options for optimization
 #------------------------
-UseWPenalty = False
-StageCoefs = [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
+UseWPenalty 		= False
+StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
+UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
+UseLammps 			= False
+UseSim 	 			= True
+ScaleRuns 			= True
+RunStepScaleList 	= [[3,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file 	= 'CG_run_OptSpline_Final_converged_ff.dat' 
+StepsEquil 		  	= 10000
+StepsProd 			= 250000
+StepsStride 		= 10
 
-UseOMM = True #use openMM to run optimization, but still use lammps for converged run
-UseLammps = False
-ScaleRuns = True
-RunStepScaleList = [[1,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF = False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file = 'ff.dat' 
 
-StepsEquil = 5
-StepsProd = 150
-StepsStride = 1
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 10.
-
-RunSpline = False
-SplineKnots = 30
-SplineConstSlope = True # Turns on Constant slope for first opt.; then shuts it off for final opt.
+Cut = 30.
+RunSpline = True
+SplineKnots = 7
+SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
+SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
-
-RunGauss = True
+RunGauss = False
 NumberGaussianBasisSets = [1]
-
 GaussMethod = 1
 
 #External potential
@@ -65,23 +61,31 @@ NPeriods = 1
 PlaneAxis = 0 #0 = x, 1 = y, 2 = z
 PlaneLoc = 0.
 
-rajList = [['CG_AtomPos_np_02_T_075', 'CG_AtomPos_np_20_T_075'],
-            ['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120', 'CG_AtomPos_np_40_T_120'],
-            ['CG_AtomPos_np_02_T_160', 'CG_AtomPos_np_20_T_160'],
-            ['CG_AtomPos_np_02_T_200', 'CG_AtomPos_np_20_T_200'],
-            ['CG_AtomPos_np_02_T_240', 'CG_AtomPos_np_20_T_240'],
-            ['CG_AtomPos_np_02_T_280', 'CG_AtomPos_np_20_T_280', 'CG_AtomPos_np_40_T_280']]
-
-#-----------------------------------------------------------------------------
-#Options for MD on convered CG model (MD steps are scaled by RunStepScaleList)
-#-----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#Options for MD on converged CG model (MD steps are scaled by RunStepScaleList)
+#------------------------------------------------------------------------------
 NSteps_Min = 1000
 NSteps_Equil = 2e6
 NSteps_Prod = 50e6
 WriteFreq = 5000
 # parameter names and their values; need to specify trajectorylist above 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol','RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods','PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd','StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty','Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq']
-CGModel_Parameters     = [Cut,SplineKnots,ExpEnsemble,TrajList,NumberThreads,NMolList,RunStepScaleList,GaussMethod,ScaleRuns,DOP,UConst,NPeriods,PlaneAxis,PlaneLoc,UseOMM,UseLammps, StepsEquil, StepsProd,StepsStride,SplineConstSlope,FitSpline,SysLoadFF,force_field_file,UseWPenalty ,Pressure_List,StageCoefs,NSteps_Min,NSteps_Equil ,NSteps_Prod,WriteFreq]
+if type(NMolList[0])==list:
+	ExpEnsemble = True
+else:
+	ExpEnsemble = False
+
+CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol',
+                          'RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods',
+                          'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
+                          'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
+                          'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
+						  'UseSim', 'SplineOption']
+CGModel_Parameters     = [Cut, SplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
+                          RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
+                          PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
+                          StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
+                          Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
+						  UseSim, SplineOption]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -230,8 +234,8 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 ''' ********************************************************************************* '''
 ''' ********* THE CODE THAT CALLS THE ABOVE FUNCTIONS TO GENERATE CG RUNS *********** '''
 ''' ********************************************************************************* '''
-if UseOMM == UseLammps:
-	raise Exception('UseOMM and UseLammps cannot have the same value')
+if UseOMM == UseLammps and UseOMM == UseSim:
+	raise Exception('UseOMM, UseSim and UseLammps cannot all have the same value')
 if RunSpline == RunGauss:
 	raise Exception('RunSpline and RunGauss cannot have the same value')
 if UConst > 0 and not UseOMM:
