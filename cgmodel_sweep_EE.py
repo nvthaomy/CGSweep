@@ -217,7 +217,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     # lock and load
     Sys.Load()
 
-    Sys.BoxL[:] = BoxL
+    Sys.BoxL = BoxL
 
     #initial positions and velocities
     sim.system.positions.CubicLattice(Sys)
@@ -268,7 +268,7 @@ for index, NMol in enumerate(NMol_List):
     #Traj_Temp = sim.traj.Lammps(Traj)
     #BoxL = Traj_Temp.Init_BoxL[0]
     Traj_Temp = pickleTraj(Traj_List[index])
-    BoxL = Traj_Temp.FrameData['BoxL'][0] 
+    BoxL = Traj_Temp.FrameData['BoxL'] 
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
@@ -330,7 +330,8 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-	W = SysTemp.NDOF - 3*Press*BoxL**3
+	Volume = np.prod(BoxL)
+	W = SysTemp.NDOF - 3*Press*Volume
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
