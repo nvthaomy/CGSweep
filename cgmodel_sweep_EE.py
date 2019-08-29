@@ -981,7 +981,7 @@ if RunConvergedCGModel:
                 
                 
                 with open(Sys.Name+'_Statistics.dat','w') as g:
-                    g.write('#  Avg.    Var.    StdErr.     Corr.   Var.    StdErr.\n')
+                    g.write('#  Avg.    Pseudo-Var.    StdErr.     Corr.   Var.    StdErr.\n')
                     if CalcRg:
                         g.write('Rg        {0:8.4f}      {1:8.6f}      {2:8.6f}      {3:8.4f}      {4:8.6f}      {5:8.6f}\n'.format(Stats_RgAverage,Stats_RgVarTotal,Stats_RgStdErr,Stats_AvgRgCorrTime,np.var(Stats_RgCorrTime),Stats_RgCorrTimeStdErr))
                     if CalcRee:
