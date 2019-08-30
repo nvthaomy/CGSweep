@@ -744,7 +744,7 @@ if RunConvergedCGModel:
                                 if CnvDATA2PDB: # Automatically finds the bonds from the topology file
                                     bonds = None
                                 else:
-                                    bonds = np.asarray(bonds)
+                                    bonds = np.asarray(bonds,dtype=np.int32)
                                 traj.make_molecules_whole(inplace=True, sorted_bonds=bonds)
                             
                             if SaveCalculationsToFile == True: os.chdir(SaveFilename)
