@@ -23,6 +23,7 @@ CG_Mappings = [10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 NMolList = [[2,20]]
 TrajList = [['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120']]
+SplineKnots = [[]] # If fitting gaussians to splines
 Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
     
 #------------------------
@@ -47,7 +48,7 @@ StepsStride 		= 10
 #--------------------------
 Cut = 30.
 RunSpline = True
-SplineKnots = 7
+NSplineKnots = 7
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
@@ -74,13 +75,13 @@ if type(NMolList[0])==list:
 else:
 	ExpEnsemble = False
 
-CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads','NMol',
+CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads','NMol',
                           'RunStepScaleList','GaussMethod','ScaleRuns','DOP','UConst','NPeriods',
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
 						  'UseSim', 'SplineOption']
-CGModel_Parameters     = [Cut, SplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
+CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
