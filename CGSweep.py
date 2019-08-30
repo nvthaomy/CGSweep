@@ -8,18 +8,18 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-TrajFileDir = 'trajectories'
+TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
-SpecialName     = 'trialnewcode'
-NumberThreads = 1
-JobRunTime = '24:00:00'
+SpecialName     = 'NoP'
+NumberThreads = 5
+JobRunTime = '700:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = 50
-CG_Mappings = [10]
+DOP = 24
+CG_Mappings = [3]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 NMolList = [[2,20]]
 TrajList = [['CG_AtomPos_np_02_T_120', 'CG_AtomPos_np_20_T_120']]
@@ -31,27 +31,28 @@ Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying 
 UseWPenalty 		= False
 StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
 UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
-UseLammps 			= False
-UseSim 	 			= True
+UseLammps 			= True
+UseSim 	 			= False
 ScaleRuns 			= True
 RunStepScaleList 	= [[3,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
 force_field_file 	= 'CG_run_OptSpline_Final_converged_ff.dat' 
 
-StepsEquil 		  	= 10000
-StepsProd 			= 250000
-StepsStride 			= 10
+StepsEquil 		  	= 5e5
+StepsProd 			= 3e6
+StepsStride 			= 200
 TimeStep 			= 0.001
 
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 30.
+Cut = 10.
 RunSpline = True
-SplineKnots = 7
+SplineKnots = 30
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = True # Turns on Gaussian Fit of the spline for the initial guess
+
 RunGauss = False
 NumberGaussianBasisSets = [1]
 GaussMethod = 1
