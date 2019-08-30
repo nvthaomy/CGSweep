@@ -137,6 +137,16 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     else:
         # lj gauss
         GaussPot_List = []
+        
+        if GaussMethod == 4: # Fitting Gaussians to spline
+            opt = GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_consider, 
+                        SlopeCut=-10., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
+                        weight_rssq = True)
+            print('\nOptimal number of Gaussians are {}\n'.format(opt[0]))
+            print('Optimal parameters: \n')
+            print('\n{}\n'.format(opt[1]))
+            NumberGaussians = opt[0]
+            
         for g in range(NumberGaussians):
             temp_Label = 'LJGauss{}'.format(g)
             temp_Gauss = sim.potential.LJGaussian(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
@@ -146,6 +156,10 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
             if g == 0: # initialize the first Guassian to be repulsive
                 temp_Gauss.Param.B = 5.
                 temp_Gauss.Param.B.min = 0.
+                
+            if GaussMethod == 4: # Set the initial guesses on the parameters
+                temp_Gauss.Param.B = opt[1][g*2]
+                temp_Gauss.Param.Kappa = opt[1][g*2+1]
                 
             GaussPot_List.append(temp_Gauss)
         
@@ -403,7 +417,7 @@ if RunOptimization:
             Option1: Run all together
             Option2: Stage one at a time; Run all together after individual
             Option3: Run First one, then allow prior and new one to float together; Run all together after individual
-        
+            Option4: Fit Gaussian to the converged spline then relax with relative entropy
         '''
         
         # Option1
@@ -534,6 +548,18 @@ if RunOptimization:
         # End Option3
 
 
+        # Option4
+        #*******************************************************************************************#
+        if GaussMethod == 4:
+            
+            # opt. 
+            OptimizerPrefix = ("{}_LSQFit_OptGaussAll_Final".format(SrelName))
+            RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs)
+            
+        #*******************************************************************************************#    
+        # End Option4
+        
+        
 ''' ***************************************************************** '''
 ''' Run the converged CG model to calculate Rg, Pressure, etc....     '''
 ''' ***************************************************************** '''                
