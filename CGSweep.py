@@ -37,10 +37,11 @@ ScaleRuns 			= True
 RunStepScaleList 	= [[3,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
 force_field_file 	= 'CG_run_OptSpline_Final_converged_ff.dat' 
+
 StepsEquil 		  	= 10000
 StepsProd 			= 250000
-StepsStride 		= 10
-
+StepsStride 			= 10
+TimeStep 			= 0.001
 
 #--------------------------
 #Options for pair potential
@@ -67,7 +68,9 @@ PlaneLoc = 0.
 NSteps_Min = 1000
 NSteps_Equil = 2e6
 NSteps_Prod = 50e6
+Time_Step = 0.001
 WriteFreq = 5000
+
 # parameter names and their values; need to specify trajectorylist above 
 if type(NMolList[0])==list:
 	ExpEnsemble = True
@@ -79,13 +82,13 @@ CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads'
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption']
+						  'UseSim', 'SplineOption','Time_Step','TimeStep']
 CGModel_Parameters     = [Cut, SplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption]
+						  UseSim, SplineOption,Time_Step,TimeStep]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -156,7 +159,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 			if file.split(".lammpstrj")[0] in Traj:
                     		#print(os.path.join(cwd,RunDirName,file))
                     		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-              if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+              if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
@@ -166,7 +169,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         copyfile(os.path.join(cwd,TrajFileDir,str(Traj+'.lammpstrj')),os.path.join(cwd,RunDirName,str(Traj+'.lammpstrj')))
         for subdir, dirs, files in os.walk(source):
             for file in files:
-                if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
             
     # move into new directory
@@ -193,10 +196,13 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 	    else:
 		param_value = "[{}]".format(param_value[TrajListInd])
 	if 'Pressure_List' in param_name:
-            if ExpEnsemble:
-                param_value = str(param_value[TrajListInd])
-            else:
-                param_value = "[{}]".format(param_value[TrajListInd])
+	    if UseWPenalty:	
+	        if ExpEnsemble:
+        	        param_value = str(param_value[TrajListInd])
+            	else:
+                	param_value = "[{}]".format(param_value[TrajListInd])
+	    else:
+		param_value = "[]"
         if 'force_field_file' in param_name:
 	    param_value = "'{}'".format(param_value)
 

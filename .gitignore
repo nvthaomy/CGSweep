@@ -1,2 +1,5 @@
 submit.sh
-stats.py
+<<<<<<< HEAD
+test_CGSweep.sh
+=======
+>>>>>>> 59cb0983031e75140906ab841bc053a10c3d02dd
