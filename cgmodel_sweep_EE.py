@@ -242,7 +242,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     # lock and load
     Sys.Load()
 
-    Sys.BoxL[:] = BoxL
+    Sys.BoxL = BoxL
 
     #initial positions and velocities
     sim.system.positions.CubicLattice(Sys)
@@ -254,7 +254,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     Int.Method = Int.Methods.VVIntegrate        
     Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    Int.Method.TimeStep = 0.001 # note: reduced units
+    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
     Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
@@ -293,7 +293,7 @@ for index, NMol in enumerate(NMol_List):
     #Traj_Temp = sim.traj.Lammps(Traj)
     #BoxL = Traj_Temp.Init_BoxL[0]
     Traj_Temp = pickleTraj(Traj_List[index])
-    BoxL = Traj_Temp.FrameData['BoxL'][0] 
+    BoxL = Traj_Temp.FrameData['BoxL'] 
     if MappingRatio != 1:
         Traj_Temp = sim.traj.Mapped(Traj_Temp, Map, BoxL = BoxL)
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
@@ -324,6 +324,7 @@ for index, NMol in enumerate(NMol_List):
     if FixBondDist0:
         PBond.Dist0.Fixed = True
         PBond.Dist0 = PBondDist0     
+
     
     ''' Setup Optimizers '''
     if UseLammps:
@@ -355,7 +356,8 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-        W = SysTemp.NDOF - 3*Press*BoxL**3
+        Volume = np.prod(BoxL)
+        W = SysTemp.NDOF - 3*Press*Volume
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
@@ -464,7 +466,7 @@ if RunOptimization:
                 
                 for g, PGauss in enumerate(FFGaussians):
                     PGauss.FreezeSpecificParam([0,1,4]) # Freeze LJ and Gauss offsets
-            
+           	    PGauss.MinHistFrac = 0.01 
             # opt. 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
             RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
@@ -493,6 +495,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == index: # unfix parameters
                             PGauss.B.Fixed = False
                             PGauss.Kappa.Fixed = False
@@ -541,6 +544,7 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
+			PGauss.MinHistFrac = 0.01
                         if gID == 0: # on the first gaussian; opt this one alone for now
                             OptimizerPrefix = ("{}_OptGauss{}".format(SrelName,gID))
                             
@@ -938,8 +942,8 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-            Int.Method.TimeStep = 0.001 # note: reduced units
-            Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+    	    Int.Method.TimeStep = Time_Step_DUMMY # note: reduced units
+	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
                 print "Now conducting warm-up...."

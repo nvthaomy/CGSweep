@@ -55,7 +55,6 @@ StepsEquil 		  	= 100000
 StepsProd 			= 1000000
 StepsStride 		= 10
 
-
 #--------------------------
 #Options for pair potential
 #--------------------------
@@ -82,6 +81,7 @@ NSteps_Min = 1000
 NSteps_Equil = 10e6
 NSteps_Prod = 25e6
 WriteFreq = 10
+
 # parameter names and their values; need to specify trajectorylist above 
 if type(NMolList[0])==list:
 	ExpEnsemble = True
@@ -94,6 +94,7 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
 						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst']
+                          
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
@@ -170,7 +171,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 			if file.split(".lammpstrj")[0] in Traj:
                     		#print(os.path.join(cwd,RunDirName,file))
                     		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-              if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+              if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
@@ -180,7 +181,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         copyfile(os.path.join(cwd,TrajFileDir,str(Traj+'.lammpstrj')),os.path.join(cwd,RunDirName,str(Traj+'.lammpstrj')))
         for subdir, dirs, files in os.walk(source):
             for file in files:
-                if "_ff" in file: # Incase one wants to seed run with FF file just put it in this directory
+                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
             
     # move into new directory
@@ -208,14 +209,16 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             if ExpEnsemble:
                 param_value = str(param_value[TrajListInd])
             else:
-                param_value = "[{}]".format(param_value[TrajListInd])
-        
-        if 'Pressure_List' in param_name and UseWPenalty:
-            if ExpEnsemble:
-                param_value = str(param_value[TrajListInd])
+            param_value = "[{}]".format(param_value[TrajListInd])
+        if 'Pressure_List' in param_name:
+            if UseWPenalty:	
+                if ExpEnsemble:
+                        param_value = str(param_value[TrajListInd])
+                    else:
+                        param_value = "[{}]".format(param_value[TrajListInd])
             else:
-                param_value = "[{}]".format(param_value[TrajListInd])
-        
+            param_value = "[]"
+
         if 'force_field_file' in param_name:
             param_value = "'{}'".format(param_value)
         
