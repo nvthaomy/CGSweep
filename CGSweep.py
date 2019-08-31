@@ -8,7 +8,7 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-TrajFileDir = 'Trajectories_VarN'
+TrajFileDir = 'Trajectories'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
@@ -80,7 +80,7 @@ PlaneLoc = 0.
 NSteps_Min = 1000
 NSteps_Equil = 10e6
 NSteps_Prod = 25e6
-WriteFreq = 10
+WriteFreq = 50
 
 # parameter names and their values; need to specify trajectorylist above 
 if type(NMolList[0])==list:
@@ -209,7 +209,8 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             if ExpEnsemble:
                 param_value = str(param_value[TrajListInd])
             else:
-            param_value = "[{}]".format(param_value[TrajListInd])
+                param_value = "[{}]".format(param_value[TrajListInd])
+                
         if 'Pressure_List' in param_name:
             if UseWPenalty:	
                 if ExpEnsemble:
@@ -217,13 +218,13 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
                     else:
                         param_value = "[{}]".format(param_value[TrajListInd])
             else:
-            param_value = "[]"
+                param_value = "[]"
 
         if 'force_field_file' in param_name:
             param_value = "'{}'".format(param_value)
         
         if 'SplineKnots' in param_name and 'N' not in param_name and RunGauss:
-            print(param_value)
+            print(param_name)
             print(param_value[TrajListInd])
             param_value = "{}".format(str(param_value[TrajListInd]))
             
