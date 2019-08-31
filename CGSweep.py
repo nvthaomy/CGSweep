@@ -47,6 +47,7 @@ StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
 UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
 UseLammps 			= True
 UseSim 	 			= False
+TimeStep            = 0.001
 ScaleRuns 			= True
 RunStepScaleList 	= [[3,1],[3,1],[4,1],[4,1],[5,2],[5,2],[10,4],[10,4]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
@@ -93,14 +94,14 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst']
+						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption, SplineKnots, BondFConst]
+						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -226,7 +227,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         if 'SplineKnots' in param_name and 'N' not in param_name and RunGauss:
             print(param_name)
             print(param_value[TrajListInd])
-            param_value = "{}".format(str(param_value[TrajListInd]))
+            param_value = "'{}'".format(str(param_value[TrajListInd][0]))
             
         if 'BondFConst' in param_name and RunGauss:
             param_value = "{}".format(str(param_value[TrajListInd][0]))
