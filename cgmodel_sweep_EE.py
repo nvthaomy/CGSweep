@@ -27,10 +27,11 @@ UseSim = UseSim_DUMMY
 
 # Default Simulation Package Settings
 sim.export.lammps.InnerCutoff = 0.000000001
+sim.export.lammps.NPairPotentialBins = 50000
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.UseLangevin = True
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
-sim.export.lammps.TableInterpolationStyle = 'linear' # More robust than spline for highly CG-ed systems
+sim.export.lammps.TableInterpolationStyle = 'lookup' # More robust than spline for highly CG-ed systems
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
 sim.srel.optimizetrajlammps.UseLangevin = True
 
@@ -118,7 +119,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
     
-    if GaussMethod in {4,5,6,7,8}:
+    if GaussMethod in {4,5,6,7,8,10}:
         PBond.Param.FConst = BondFConst
     
     ''' Add Splines '''
@@ -144,7 +145,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         # lj gauss
         GaussPot_List = []
         
-        if GaussMethod in {4,5,6,7,8}: # Fitting Gaussians to spline
+        if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
             opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., n=10, N=2000, BoundSetting='Option1', U_max_2_consider=3.25, 
                         SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = True, Cut_Length_Scale=4.)
@@ -170,7 +171,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
                 temp_Gauss.Param.B = 5.
                 temp_Gauss.Param.B.min = 0.
                 
-            if GaussMethod in {4,5,6,7,8}: # Set the initial guesses on the parameters
+            if GaussMethod in {4,5,6,7,8,9,10}: # Set the initial guesses on the parameters
                 temp_Gauss.Param.B = opt[1][g*2]
                 temp_Gauss.Param.Kappa = opt[1][g*2+1]
                 
@@ -447,6 +448,8 @@ if RunOptimization:
             Option6: Fit Gaussians to Spline, then run all B coefficients together, followed by all kappa's 
             Option7: Fit Gaussians to Spline, then run all parameters together, but parameters are bounded within a fraction
             Option8: A mix of 6 and 7, where all B's then all Kappa's are minimized, then all parameters are varied together with constraints
+            Option9: Opt all B's unconstrained (w/ Bond), then opt. Kappa and B's, but constrained
+            Option10: all B's then all Kappa's are minimized, all parameters not optimized together
         '''
         
         # Option1
@@ -831,9 +834,123 @@ if RunOptimization:
         #*******************************************************************************************#             
         # End Option8
  
-
+        # Option9
+        #*******************************************************************************************#
+        if GaussMethod == 9: 
+            FracMin = 0.9
+            FracMax = 1.1
+            
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                                    
+            # opt. all parameters, but with constraints on all parameters
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                PBond.FConst.Fixed = False
+                PBond.FConst.min = FracMin*PBond.FConst
+                PBond.FConst.max = FracMax*PBond.FConst
+                
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = False
+                        PGauss.B.min = FracMin*PGauss.B
+                        PGauss.B.max = FracMax*PGauss.B
+                        PGauss.Kappa.min = FracMin*PGauss.Kappa
+                        PGauss.Kappa.max = FracMax*PGauss.Kappa
+                        
+            # opt. all parameters
+            OptimizerPrefix = ("{}_LSQFit_OptALL_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option9
+        
+        # Option10
+        #*******************************************************************************************#
+        if GaussMethod == 10: 
+            
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                                    
+            # opt. all gausian Kappa's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = True
+                        PGauss.Kappa.Fixed = False
+                        
+            # opt. all gausian Kappa's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLKappas_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)                       
+                        
+        #*******************************************************************************************#             
+        # End Option10
 # output final gaussian potential
-if GaussMethod in {4,5,6,7,8}:
+if GaussMethod in {4,5,6,7,8,9,10}:
     
     r_max = Cut
     r_min = 0.00001
