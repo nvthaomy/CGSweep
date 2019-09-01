@@ -28,9 +28,11 @@ UseSim = UseSim_DUMMY
 # Default Simulation Package Settings
 sim.export.lammps.InnerCutoff = 0.000000001
 sim.export.lammps.LammpsExec = 'lmp_omp'
+sim.export.lammps.UseLangevin = True
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
 sim.export.lammps.TableInterpolationStyle = 'linear' # More robust than spline for highly CG-ed systems
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
+sim.srel.optimizetrajlammps.UseLangevin = True
 
 sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
 sim.export.omm.device = -1 #-1 is default, let openmm choose its own platform.
