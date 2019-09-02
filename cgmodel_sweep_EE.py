@@ -1,6 +1,7 @@
 #usr/bin/env python
 import matplotlib
-matplotlib.use('Agg')                              
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt                             
 import os, numpy as np, time, cPickle as pickle
 import sim, pickleTraj
 from spline2gaussians_leastsquares import GaussianBasisLSQ # This also requires spline to be imported
