@@ -1062,7 +1062,7 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    	    Int.Method.TimeStep = Time_Step_DUMMY # note: reduced units
+    	    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
 	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
