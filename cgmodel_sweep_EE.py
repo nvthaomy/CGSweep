@@ -842,8 +842,8 @@ if RunConvergedCGModel:
                                 for i in ReeTimeseries:
                                     Ree_temp.extend(i)
                                 Ree_data = np.asarray(Ree_temp)
-                                HistogramRee(Ree_data, number_bins=25, DoBootStrapping=True, ShowFigures=False, NormHistByMax=True, 
-                                                    TrimRee=False, ReeCutoff=1.5, ReeMinimumHistBin=0., scale=1., gaussian_filter=False, sigma=2 )
+#                                HistogramRee(Ree_data, number_bins=25, DoBootStrapping=True, ShowFigures=False, NormHistByMax=True, 
+#                                                    TrimRee=False, ReeCutoff=1.5, ReeMinimumHistBin=0., scale=1., gaussian_filter=False, sigma=2 )
 
                                 ''' Plot all the Ree '''
                                 for EndEndDist in ReeTimeseries:
