@@ -28,7 +28,7 @@ UseSim = UseSim_DUMMY
 
 # Default Simulation Package Settings
 sim.export.lammps.InnerCutoff = 0.000000001
-sim.export.lammps.NPairPotentialBins = 50000
+sim.export.lammps.NPairPotentialBins = 1000000
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.UseLangevin = True
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
@@ -120,7 +120,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
     
-    if GaussMethod in {4,5,6,7,8,10}:
+    if GaussMethod in {4,5,6,7,8,9,10}:
         PBond.Param.FConst = BondFConst
     
     ''' Add Splines '''
@@ -149,7 +149,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
             opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., n=10, N=2000, BoundSetting='Option1', U_max_2_consider=3.25, 
                         SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
-                        weight_rssq = True, Cut_Length_Scale=4.)
+                        weight_rssq = True, Cut_Length_Scale=4.,TailCorrection=False, TailWeight=1E6)
             
             print('\nOptimal number of Gaussians are {}\n'.format(opt[0]))
             print('Optimal parameters: \n')
@@ -1008,7 +1008,6 @@ if RunConvergedCGModel:
     Make_molecules_whole    = True  # Uses MDTraj to make molecules whole
     SaveCalculationsToFile 	= True
 
-    import matplotlib.pyplot as plt
     import MDAnalysis as mda
     import mdtraj as md
     from pymbar import timeseries
@@ -1063,9 +1062,11 @@ if RunConvergedCGModel:
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
     	    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
-	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+            Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
+                fobj = open('measures_{}.dat'.format(Sys_Index), 'w')
+                Sys.Measures.VerboseOutput(fobj = fobj, StepFreq=5000)                                                                                                                                           
                 print "Now conducting warm-up...."
                 Int.Run(temp_StepsEquil)
                 #Sys.Measures.Reset()

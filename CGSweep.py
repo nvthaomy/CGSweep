@@ -81,7 +81,7 @@ PlaneLoc = 0.
 NSteps_Min = 1000
 NSteps_Equil = 10e6
 NSteps_Prod = 25e6
-WriteFreq = 50
+WriteFreq = 5000
 
 # parameter names and their values; need to specify trajectorylist above 
 if type(NMolList[0])==list:
@@ -168,11 +168,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         for subdir, dirs, files in os.walk(source):
             for file in files:
                 #print (file)
-              if file.endswith(".lammpstrj"):
-			if file.split(".lammpstrj")[0] in Traj:
-                    		#print(os.path.join(cwd,RunDirName,file))
-                    		copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-              if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
+                if file.endswith(".lammpstrj"):
+                    if file.split(".lammpstrj")[0] in Traj:
+                        #print(os.path.join(cwd,RunDirName,file))
+                        copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
+                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
