@@ -28,6 +28,7 @@ Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying 
 #------------------------
 #Options for optimization
 #------------------------
+SrelWeights  = []    #False or list of number to weigh Srel, recommend 1/NAtoms. Same shape as NMolList
 UseWPenalty 		= False
 StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
 UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
@@ -83,13 +84,13 @@ CGModel_ParameterNames = ['Cut','SplineKnots','ExpEnsemble','TrajList','Threads'
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption','Time_Step','TimeStep']
+						  'UseSim', 'SplineOption','Time_Step','TimeStep','SrelWeights']
 CGModel_Parameters     = [Cut, SplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption,Time_Step,TimeStep]
+						  UseSim, SplineOption,Time_Step,TimeStep,SrelWeights]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -196,6 +197,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
 	    	param_value = str(param_value[TrajListInd])
 	    else:
 		param_value = "[{}]".format(param_value[TrajListInd])
+        if 'SrelWeights' in param_name:
+             if ExpEnsemble:
+                param_value = str(param_value[TrajListInd])
+             else:
+                param_value = False #don't need weight for 1-state Srel
 	if 'Pressure_List' in param_name:
 	    if UseWPenalty:	
 	        if ExpEnsemble:
@@ -247,6 +253,14 @@ if RunSpline == RunGauss:
 	raise Exception('RunSpline and RunGauss cannot have the same value')
 if UConst > 0 and not UseOMM:
 	raise Exception('Must set UseOMM = True  if UConst > 0')
+if ExpEnsemble:
+        if not SrelWeights == False:
+            if len(SrelWeights) != len(NMolList):
+                raise Exception('SrelWeights must have same shape as NMolList or False')
+            else:
+                for i,list in enumerate(NMolList):
+                    if len(SrelWeights[i]) != len(list):
+                        raise Exception('SrelWeights must have same shape as NMolList or False')    
 cwd = os.getcwd()
 # Read in the cgmodel_sweep.py script.
 # This is the script controlling the Srel Optimization.
