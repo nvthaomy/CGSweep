@@ -28,9 +28,9 @@ import os
 #test command
 #python spline2gaussians-leastsquares.py  -k "2.7835e+02 , 3.3541e+00 , -5.8015e-01, 1.6469e-01 ,-1.1965e-01, 5.2720e-02 , -2.3451e-02, 2.6243e-03" -cut 11 -n 2
 
-def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_consider, 
+def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, U_max_2_consider, 
                         SlopeCut=-10., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
-                        weight_rssq = False, Cut_Length_Scale=1.):
+                        weight_rssq = False, Cut_Length_Scale=1., TailCorrection=False, TailWeight=1E6):
     
     
     knots = [float(i) for i in re.split(' |,',knots) if len(i)>0]
@@ -39,7 +39,6 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
     ShowFigures = ShowFigures
     SaveToFile = SaveToFile
     SaveFileName = SaveFileName
-    nostage = False
 
     if SaveToFile: 
         try:
@@ -58,11 +57,18 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
         exp = floor(exp)
         return 10**exp
 
-    def obj(x,w,rs,u_spline): 
+    def obj(x,w,rs,u_spline,TailCorrection,rcut,TailWeight): 
         """Calculate Boltzmann weighted residuals"""
         n = int(len(x)/2) #number of Gaussians
         u_gauss = getUgauss(x,rs,n)
-        return w*(u_gauss-u_spline)
+        if TailCorrection:
+            w_tail = TailWeight
+            rcut_temp = np.zeros(1)
+            rcut_temp[0] = rcut
+            tail_value = np.abs(getUgauss(x,rcut_temp,n)-0)
+            return w*(u_gauss-u_spline)+w_tail*(tail_value)
+        else:
+            return w*(u_gauss-u_spline)
 
     def getUgauss(x,rs,n):
         u_gauss = np.zeros(len(rs))
@@ -170,7 +176,7 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
     logout = open("fitting.data",'w')
     logout.close()
     u_gauss_list = []                 
-
+ 
     if nostage == False:   
         for i in range(n):
             logout = open("fitting.data",'a')
@@ -189,7 +195,7 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
                 logout.write('\nParameters from optimizing {} Gaussians:\n'.format(i+1))
                 logout.write('\nInitial guess: {}\n'.format(x0))
                 
-            gauss = least_squares(obj,x0, args = (w,rs,u_spline),bounds=bounds)
+            gauss = least_squares(obj,x0, args = (w,rs,u_spline, TailCorrection, rcut,TailWeight),bounds=bounds)
             xopt = gauss.x
             param_list.append(xopt)
             sys.stdout.write('\n{}'.format(xopt))
@@ -213,12 +219,16 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
         bounds = getBounds(n)
         sys.stdout.write('\nInitial guess:')
         sys.stdout.write('\n{}'.format(x0))
-        gauss = least_squares(obj,x0, args = (w,rs,u_spline),bounds=bounds)
+        gauss = least_squares(obj,x0, args = (w,rs,u_spline, TailCorrection, rcut,TailWeight),bounds=bounds)
         xopt = gauss.x
         sys.stdout.write('\nParameters from optimizing {} Gaussians:'.format(n))
         sys.stdout.write('\n{}'.format(xopt))
         sys.stdout.write('\nLSQ: {}\n'.format(gauss.cost))
         plot(xopt,rs,n,u_spline, ShowFigures)
+        u_gauss = getUgauss(xopt,rs,i+1)
+        u_gauss_list.append(u_gauss)                                                                                 
+        cost_list.append(gauss.cost)
+        gauss_list.append(i+1)
 
     ''' One method to pick optimal number of Gaussians. '''
     derLSQObj = []
@@ -234,13 +244,16 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, N, BoundSetting, U_max_2_conside
             elif index_opt != None and cost_list[i-1]/val > 7:
                 index_opt = i
             elif i == (len(cost_list)-1) and index_opt == None:
-                index_opt = i # Pick the last one so nothing crashes
+                index_opt = i # Pick the last one so nothing crashes or if only one is specified
 
     logout = open("fitting.data",'a')
     logout.write('\nOptimal number of Gaussians are {}\n'.format(gauss_list[index_opt]))
     logout.write('Optimal parameters: \n')
     logout.write('\n{}'.format(param_list[index_opt]))
     logout.write('\nLSQ: {}\n'.format(cost_list[index_opt]))
+    logout.write('TailCorrection: {}'.format(TailCorrection))
+    logout.write('\nTail Weight: {}'.format(TailWeight))
+    logout.write('\nTailCorrection constrains the Gaussians to sum to zero at the cutoff.')
     logout.close()        
     np.savetxt('slope.data', zip(gauss_list[1:],derLSQObj))        
 
