@@ -44,6 +44,18 @@ sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structu
 sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
 sim.export.omm.UseTabulated = True
 
+#Srel Settings
+print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
+print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
+print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
+
+sim.srel.optimizetraj.CGGradTol = 1E-3
+sim.srel.optimizetraj.CGAbsTol = 1E-7
+sim.srel.optimizetraj.CGFracTol = 1E-7
+
+print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
+print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
+print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
 
 #External Potential Settings
 Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
