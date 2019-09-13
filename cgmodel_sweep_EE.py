@@ -278,6 +278,12 @@ for index, NMol in enumerate(NMol_List):
                                         CoordMin, CoordMax, LDKnots, RunSpline, SplineKnots, NumberGaussians)
     
     SysFFList.append([FFList, FFGaussians])
+
+    # Freeze parameters that never change
+    PBond = SysTemp.ForceField[0]
+    if FixBondDist0:
+        PBond.Dist0.Fixed = True
+        PBond.Dist0 = PBondDist0
     
     ''' Now setting initial system optimizations. '''
     if SysLoadFF: # option to load in trajectory to seed the optimization
@@ -292,13 +298,6 @@ for index, NMol in enumerate(NMol_List):
     print 'NDOF: {}'.format(SysTemp.NDOF)
     for (i, a) in enumerate(SysTemp.Atom):
         MapTemp += [sim.atommap.AtomMap(Atoms1 = i, Atom2 = a)]
-    
-    
-    # Freeze parameters that never change
-    PBond = SysTemp.ForceField[0]
-    if FixBondDist0:
-        PBond.Dist0.Fixed = True
-        PBond.Dist0 = PBondDist0
     
     ''' Setup Optimizers '''
     if UseLammps:
@@ -411,13 +410,6 @@ if RunOptimization:
                 FFList = SysFF[0] # Contains Bond and/or Splines
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
-                PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
                 
@@ -440,13 +432,6 @@ if RunOptimization:
                     FFList = SysFF[0] # Contains Bond and/or Splines
                     FFGaussians = SysFF[1] # Constains Gaussians
                     
-                    PBond = FFList[0]
-                    if FixBondDist0:
-                        PBond.Dist0.Fixed = True
-                        PBond.Dist0 = PBondDist0
-                    else: 
-                        PBond.Dist0.Fixed = False
-                        PBond.Dist0 = PBondDist0
                     if UseLocalDensity:
                         PLD = FFList[1]
                     
@@ -489,13 +474,6 @@ if RunOptimization:
                     FFList = SysFF[0] # Contains Bond and/or Splines
                     FFGaussians = SysFF[1] # Constains Gaussians
                     
-                    PBond = FFList[0]
-                    if FixBondDist0:
-                        PBond.Dist0.Fixed = True
-                        PBond.Dist0 = PBondDist0
-                    else: 
-                        PBond.Dist0.Fixed = False
-                        PBond.Dist0 = PBondDist0
                     if UseLocalDensity:
                         PLD = FFList[1]
                     
