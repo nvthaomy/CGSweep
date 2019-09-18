@@ -284,7 +284,8 @@ for index, NMol in enumerate(NMol_List):
     if FixBondDist0:
         PBond.Dist0.Fixed = True
         PBond.Dist0 = PBondDist0
-    
+    else:
+        PBond.Dist0 = PBondDist0 
     ''' Now setting initial system optimizations. '''
     if SysLoadFF: # option to load in trajectory to seed the optimization
         with open(force_field_file, 'r') as of: s = of.read()
