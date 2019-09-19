@@ -28,7 +28,7 @@ import os
 #test command
 #python spline2gaussians-leastsquares.py  -k "2.7835e+02 , 3.3541e+00 , -5.8015e-01, 1.6469e-01 ,-1.1965e-01, 5.2720e-02 , -2.3451e-02, 2.6243e-03" -cut 11 -n 2
 
-def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, U_max_2_consider, 
+def GaussianBasisLSQ(knots=None, rcut=None, rcutinner=None, ng=5, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=None, 
                         SlopeCut=-10., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = False, Cut_Length_Scale=1., TailCorrection=False, TailWeight=1E6):
     
