@@ -216,7 +216,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             if UseWPenalty:	
                 if ExpEnsemble:
                         param_value = str(param_value[TrajListInd])
-                    else:
+                else:
                         param_value = "[{}]".format(param_value[TrajListInd])
             else:
                 param_value = "[]"

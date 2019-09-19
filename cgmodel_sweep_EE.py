@@ -44,19 +44,6 @@ sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structu
 sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
 sim.export.omm.UseTabulated = True
 
-#Srel Settings
-print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
-print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
-print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
-
-sim.srel.optimizetraj.CGGradTol = 1E-3
-sim.srel.optimizetraj.CGAbsTol = 1E-7
-sim.srel.optimizetraj.CGFracTol = 1E-7
-
-print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
-print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
-print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
-
 #External Potential Settings
 Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
 if Ext["UConst"] > 0:
@@ -322,11 +309,6 @@ for index, NMol in enumerate(NMol_List):
 
     # Freeze parameters that never change
     PBond = SysTemp.ForceField[0]
-    if FixBondDist0:
-        PBond.Dist0.Fixed = True
-        PBond.Dist0 = PBondDist0
-    else:
-        PBond.Dist0 = PBondDist0 
     ''' Now setting initial system optimizations. '''
     if SysLoadFF: # option to load in trajectory to seed the optimization
         with open(force_field_file, 'r') as of: s = of.read()
@@ -603,12 +585,6 @@ if RunOptimization:
                     FFGaussians = SysFF[1] # Constains Gaussians
                     
                     PBond = FFList[0]
-                    if FixBondDist0:
-                        PBond.Dist0.Fixed = True
-                        PBond.Dist0 = PBondDist0
-                    else: 
-                        PBond.Dist0.Fixed = False
-                        PBond.Dist0 = PBondDist0
                     if UseLocalDensity:
                         PLD = FFList[1]
                     
@@ -650,12 +626,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -673,12 +643,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -722,12 +686,6 @@ if RunOptimization:
                 PBond.FConst.min = FracMin*PBond.FConst
                 PBond.FConst.max = FracMax*PBond.FConst
                 
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -759,12 +717,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -782,12 +734,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -809,12 +755,6 @@ if RunOptimization:
                 PBond.FConst.min = FracMin*PBond.FConst
                 PBond.FConst.max = FracMax*PBond.FConst
                 
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -845,12 +785,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -872,12 +806,6 @@ if RunOptimization:
                 PBond.FConst.min = FracMin*PBond.FConst
                 PBond.FConst.max = FracMax*PBond.FConst
                 
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -906,12 +834,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -929,12 +851,6 @@ if RunOptimization:
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
                 PBond = FFList[0]
-                if FixBondDist0:
-                    PBond.Dist0.Fixed = True
-                    PBond.Dist0 = PBondDist0
-                else: 
-                    PBond.Dist0.Fixed = False
-                    PBond.Dist0 = PBondDist0
                 if UseLocalDensity:
                     PLD = FFList[1]
            
