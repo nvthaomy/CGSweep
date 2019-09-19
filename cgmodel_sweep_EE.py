@@ -1,10 +1,11 @@
 #usr/bin/env python
-
-### Testing for potentials in SIM suite.
-### coded by TS
-
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.pyplot as plt                             
 import os, numpy as np, time, cPickle as pickle
 import sim, pickleTraj
+from spline2gaussians_leastsquares import GaussianBasisLSQ # This also requires spline to be imported
+import re         
 
 print sim
 
@@ -19,15 +20,21 @@ DOP = DOP_DUMMY
 MappingRatio = CGMap_DUMMY
 Pressure_List = Pressure_List_DUMMY 
 StageCoefs = StageCoefs_DUMMY  #HERE may need to be more gradual for stability
-
 SrelName = "CG_run"
+UseLammps = UseLammps_DUMMY 
+UseOMM = UseOMM_DUMMY
+UseSim = UseSim_DUMMY
 
-# default settings
-sim.export.lammps.InnerCutoff = 0.00001
+
+# Default Simulation Package Settings
+sim.export.lammps.InnerCutoff = 0.000000001
+sim.export.lammps.NPairPotentialBins = 1000000
 sim.export.lammps.LammpsExec = 'lmp_omp'
+sim.export.lammps.UseLangevin = True
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
-sim.export.lammps.TableInterpolationStyle = 'linear' # More robust than spline for highly CG-ed systems
+sim.export.lammps.TableInterpolationStyle = 'lookup' # More robust than spline for highly CG-ed systems
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
+sim.srel.optimizetrajlammps.UseLangevin = True
 
 sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
 sim.export.omm.device = -1 #-1 is default, let openmm choose its own platform.
@@ -37,7 +44,20 @@ sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structu
 sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
 sim.export.omm.UseTabulated = True
 
-#External potential
+#Srel Settings
+print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
+print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
+print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
+
+sim.srel.optimizetraj.CGGradTol = 1E-3
+sim.srel.optimizetraj.CGAbsTol = 1E-7
+sim.srel.optimizetraj.CGFracTol = 1E-7
+
+print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
+print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
+print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
+
+#External Potential Settings
 Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
 if Ext["UConst"] > 0:
     print("Using external sinusoid with UConst {}".format(Ext["UConst"]))
@@ -45,7 +65,8 @@ if Ext["UConst"] > 0:
 else:
     UseExternal = False
 
-# md iterations
+
+# MD Iterations
 StepsEquil 			= StepsEquil_DUMMY
 StepsProd 			= StepsProd_DUMMY
 StepsStride 		= StepsStride_DUMMY
@@ -53,44 +74,38 @@ ScaleRuns 			= ScaleRuns_DUMMY
 RunStepScaleList 	= RunStepScaleList_DUMMY
 GaussMethod 		= GaussMethod_DUMMY
 
-Cut = Cut_DUMMY
-FixBondDist0 = True
-PBondDist0 = 0. # For zero centered bonds set to 0.
-UseLocalDensity = False
-CoordMin = 0    
-CoordMax = 350
-LDKnots    = 10
-# N.S. TODO:
-# Change how Gaussian potentials are handled
 
+# Force-Field Settings
+Cut             = Cut_DUMMY
+FixBondDist0    = True
+BondFConst      = BondFConst_DUMMY
+PBondDist0      = 0. # For zero centered bonds set to 0.
+UseLocalDensity = False
+CoordMin        = 0    
+CoordMax        = 350
+LDKnots         = 10
 NumberGaussians = NumberGaussians_DUMMY
-SrelWeights = SrelWeights_DUMMY
-RunSpline = RunSpline_DUMMY
-SplineKnots = SplineKnots_DUMMY
+RunSpline       = RunSpline_DUMMY
+NSplineKnots    = NSplineKnots_DUMMY
+SplineKnots     = SplineKnots_DUMMY
 
 # Spline options
 #   Option1 = Constant slope 
 #   Option2 = Constant slope, then turn-off
 #   Option3 = Slope unconstrained
 
-SplineOption = SplineOption_DUMMY 
-FitSpline = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
-
-# N.S. TODO:
-# Add in option to specify the Spline inner slope (i.e. 2kbTperA)
-# Add in Spline fit parameters (i.e. make stronger or longer ranged based on mapping)
-SysLoadFF = SysLoadFF_DUMMY # Use if you desire to seed a run with an already converged force-field.
-force_field_file = force_field_file_DUMMY               
-UseWPenalty = UseWPenalty_DUMMY
-UseLammps = UseLammps_DUMMY 
-UseOMM = UseOMM_DUMMY
-UseSim = UseSim_DUMMY
-WriteTraj = True
+SplineOption        = SplineOption_DUMMY 
+FitSpline           = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
+SysLoadFF           = SysLoadFF_DUMMY # Use if you desire to seed a run with an already converged force-field.
+force_field_file    = force_field_file_DUMMY               
+UseWPenalty         = UseWPenalty_DUMMY
+WriteTraj           = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
 RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
-# outputs LAMMPS .dcd trajectory (this requires modification of the lammps.py export in sim. 
+WeightSysByMolecules = False # Option to weight E.E. systems by the number of molecules
+WeightSysByMoleculeRatios = True # Option to weight E.E. systems by the ratio of number of molecules
 
-
+''' Bulk of Code '''
 def FreezeParameters(System_List, Pot, Parameters):
     # - Pot is the index of the potential with parameters to freeze.
     # - Parmaters is a list of parameters to freeze in Pot.
@@ -100,9 +115,11 @@ def FreezeParameters(System_List, Pot, Parameters):
                 Pot.FreezeSpecificParam(Parameters) 
                 
 
-def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, RunSpline, SplineKnots, NumberGaussians):
+def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, RunSpline, 
+                        NSplineKnots, NumberGaussians, GaussMethod, SplineKnots):
     ''' Function that creates the system force-field. '''
     
+    opt = None
     FFList = []
     FFGaussians = []
     AtomType = Sys.World[0][0] #since only have one atom type in the system
@@ -115,10 +132,13 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
     
+    if GaussMethod in {4,5,6,7,8,9,10}:
+        PBond.Param.FConst = BondFConst
+    
     ''' Add Splines '''
     if RunSpline:
         PSpline = sim.potential.PairSpline(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
-                                           NKnot = SplineKnots, Label = 'Spline', 
+                                           NKnot = NSplineKnots, Label = 'Spline', 
                                            NonbondEneSlope = "0.25kTperA", BondEneSlope = "0.25kTperA")
         if FitSpline:
             Max = 4.
@@ -137,15 +157,36 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     else:
         # lj gauss
         GaussPot_List = []
+        
+        if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
+            opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., ng=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=3.25, 
+                        SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
+                        weight_rssq = True, Cut_Length_Scale=4.,TailCorrection=False, TailWeight=1E6)
+            
+            print('\nOptimal number of Gaussians are {}\n'.format(opt[0]))
+            print('Optimal parameters: \n')
+            print('\n{}\n'.format(opt[1]))
+            
+            NumberGaussians = opt[0]
+            
         for g in range(NumberGaussians):
             temp_Label = 'LJGauss{}'.format(g)
             temp_Gauss = sim.potential.LJGaussian(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
                                  Sigma = 1.0, Epsilon = 0.0, B = 0., Kappa = 0.15,
                                  Dist0 = 0.0, Label = temp_Label)
             
+            temp_Gauss.MinHistFrac = 0.01
+            temp_Gauss.Param.Sigma.Fixed = True
+            temp_Gauss.Param.Epsilon.Fixed = True
+            temp_Gauss.Param.Dist0.Fixed = True
+            
             if g == 0: # initialize the first Guassian to be repulsive
                 temp_Gauss.Param.B = 5.
                 temp_Gauss.Param.B.min = 0.
+                
+            if GaussMethod in {4,5,6,7,8,9,10}: # Set the initial guesses on the parameters
+                temp_Gauss.Param.B = opt[1][g*2]
+                temp_Gauss.Param.Kappa = opt[1][g*2+1]
                 
             GaussPot_List.append(temp_Gauss)
         
@@ -173,10 +214,10 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         ExtPot = sim.potential.ExternalSinusoid(Sys, Filter=FilterExt, UConst=Ext["UConst"], NPeriods=Ext["NPeriods"], PlaneAxis=Ext["PlaneAxis"], PlaneLoc=Ext["PlaneLoc"], Label="ExtSin")
 	FFList.append(ExtPot)
 
-    return FFList, FFGaussians
+    return FFList, FFGaussians, NumberGaussians, opt
 
 def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensity, CoordMin, CoordMax,
-                    LDKnots, RunSpline, SplineKnots, NumberGaussians):
+                    LDKnots, RunSpline, NSplineKnots, NumberGaussians):
     ''' Function that creates the system objects and returns them and a force-field object list. '''
     
     FFList = []
@@ -202,9 +243,9 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
 
     ''' Add in potentials '''
     
-    FFList, FFGaussians = CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, 
-                                RunSpline, SplineKnots,
-                                NumberGaussians) 
+    FFList, FFGaussians, NumberGaussians, opt = CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, 
+                                                            RunSpline, NSplineKnots,
+                                                            NumberGaussians, GaussMethod, SplineKnots) 
                                 
     Sys.ForceField.extend(FFList)
     Sys.ForceField.extend(FFGaussians)
@@ -233,7 +274,7 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
     Sys.TempSet = TempSet
     
-    return Sys, [FFList, FFGaussians]
+    return Sys, [FFList, FFGaussians], NumberGaussians, opt
 
     
 ''' ************************************************************** '''
@@ -274,8 +315,8 @@ for index, NMol in enumerate(NMol_List):
         sim.traj.base.Convert(Traj_Temp, sim.traj.LammpsWrite, FileName = OutTraj, Verbose = True)
       
     
-    SysTemp, [FFList, FFGaussians] = CreateSystem(Name, BoxL, NMol, CGDOP, Cut, UseLocalDensity, 
-                                        CoordMin, CoordMax, LDKnots, RunSpline, SplineKnots, NumberGaussians)
+    SysTemp, [FFList, FFGaussians], NumberGaussians, opt = CreateSystem(Name, BoxL, NMol, CGDOP, Cut, UseLocalDensity, 
+                                                        CoordMin, CoordMax, LDKnots, RunSpline, NSplineKnots, NumberGaussians)
     
     SysFFList.append([FFList, FFGaussians])
 
@@ -300,11 +341,19 @@ for index, NMol in enumerate(NMol_List):
     for (i, a) in enumerate(SysTemp.Atom):
         MapTemp += [sim.atommap.AtomMap(Atoms1 = i, Atom2 = a)]
     
+    # Freeze parameters that never change
+    PBond = SysTemp.ForceField[0]
+    if FixBondDist0:
+        PBond.Dist0.Fixed = True
+        PBond.Dist0 = PBondDist0     
+    else:
+        PBond.Dist0 = PBondDist0
+    
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
     elif UseOMM:
-	OptClass = sim.srel.optimizetrajomm.OptimizeTrajOpenMMClass
+        OptClass = sim.srel.optimizetrajomm.OptimizeTrajOpenMMClass
     else:
         OptClass = sim.srel.optimizetraj.OptimizeTrajClass
     
@@ -330,8 +379,8 @@ for index, NMol in enumerate(NMol_List):
     # NEED TO CHECK HOW THE VIRIAL IS COMPUTED BELOW, WAS ONLY USED FOR GAUSSIAN FLUID
     if UseWPenalty == True:
         Press = Pressure_List[index]
-	Volume = np.prod(BoxL)
-	W = SysTemp.NDOF - 3*Press*Volume
+        Volume = np.prod(BoxL)
+        W = SysTemp.NDOF - 3*Press*Volume
         Opt_temp.AddPenalty("Virial", W, MeasureScale = 1./SysTemp.NAtom, Coef = 1.e-80) #HERE also need to scale the measure by 1/NAtom to be comparable to Srel
         
     OptList.append(Opt_temp)
@@ -343,11 +392,11 @@ for index, NMol in enumerate(NMol_List):
 ''' ******************************************* '''
 RunOptimization = True
 
-def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs):
+def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0):
     ''' Runs Srel Optimization '''
     Optimizer.FilePrefix = (OptimizerPrefix)
     if UseWPenalty == False:
-        Optimizer.RunConjugateGradient()
+        Optimizer.RunConjugateGradient(MaxIter=MaxIter, SteepestIter=SteepestIter)
     
     elif UseWPenalty == True:
         Optimizer.RunStages(StageCoefs = StageCoefs)
@@ -355,10 +404,23 @@ def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs):
 
 if RunOptimization:
     # Just always using the OptimizeMultiTrajClass
-    if not SrelWeights:
-        Weights = [1.]*len(OptList)
-    else:
-        Weights = SrelWeights
+    Weights = [1.]*len(OptList)
+    
+    if WeightSysByMolecules:
+        Weights = []
+        for NMol in NMol_List:
+            Weights.append(1./NMol)
+        print ('Weights for Expanded Ensemble are:')
+        print (Weights)
+            
+    if WeightSysByMoleculeRatios:
+        Weights = []
+        NMolMax = np.max(NMol_List)
+        for NMol in NMol_List:
+            Weights.append(NMolMax/NMol)
+        print ('Weights for Expanded Ensemble are:')
+        print (Weights)
+
     Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
     
     if RunSpline:
@@ -378,7 +440,7 @@ if RunOptimization:
             print('No spline option recognized or defined!')
         
         # opt. 
-        RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs)
+        RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
         
         
         if SplineOption == 'Option2':
@@ -390,7 +452,7 @@ if RunOptimization:
             OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
             
             # opt. 
-            RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs)
+            RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
 
     else: # Run Gaussians optimization in stages
     # N.S. TODO: at somepoint could be useful to make this more robust using list so that an arbitrary number
@@ -401,7 +463,13 @@ if RunOptimization:
             Option1: Run all together
             Option2: Stage one at a time; Run all together after individual
             Option3: Run First one, then allow prior and new one to float together; Run all together after individual
-        
+            Option4: Fit Gaussian to the converged spline then relax with relative entropy
+            Option5: Fit Gaussians to spline and Stage one Gaussian potential at a time; Run all together after individual
+            Option6: Fit Gaussians to Spline, then run all B coefficients together, followed by all kappa's 
+            Option7: Fit Gaussians to Spline, then run all parameters together, but parameters are bounded within a fraction
+            Option8: A mix of 6 and 7, where all B's then all Kappa's are minimized, then all parameters are varied together with constraints
+            Option9: Opt all B's unconstrained (w/ Bond), then opt. Kappa and B's, but constrained
+            Option10: all B's then all Kappa's are minimized, all parameters not optimized together
         '''
         
         # Option1
@@ -419,7 +487,7 @@ if RunOptimization:
            	    PGauss.MinHistFrac = 0.01 
             # opt. 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
-            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
             
         #*******************************************************************************************#    
         # End Option1
@@ -448,7 +516,7 @@ if RunOptimization:
                         
                 # opt. 
                 OptimizerPrefix = ("{}_OptGauss{}".format(SrelName,gID))
-                RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
+                RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
             
             for SysFF in SysFFList: #Loop through all system FFs
                 FFList = SysFF[0] # Contains Bond and/or Splines
@@ -460,7 +528,7 @@ if RunOptimization:
             
             # opt. ALL 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
-            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
                         
         #*******************************************************************************************#             
         # End Option2
@@ -495,7 +563,7 @@ if RunOptimization:
                                 PGauss.Kappa.Fixed = True
                         
                 # opt. 
-                RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)
+                RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
             
             for SysFF in SysFFList: #Loop through all system FFs
                 FFList = SysFF[0] # Contains Bond and/or Splines
@@ -507,12 +575,418 @@ if RunOptimization:
             
             # opt. ALL 
             OptimizerPrefix = ("{}_OptGaussAll_Final".format(SrelName))
-            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs)            
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)            
 
         #*******************************************************************************************#       
         # End Option3
 
 
+        # Option4
+        #*******************************************************************************************#
+        if GaussMethod == 4:
+            
+            # opt. 
+            OptimizerPrefix = ("{}_LSQFit_OptGaussAll_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            
+        #*******************************************************************************************#    
+        # End Option4
+        
+        
+        # Option5
+        #*******************************************************************************************#
+        if GaussMethod == 5: 
+             
+            for gID in range(NumberGaussians):
+                for SysFF in SysFFList: #Loop through all system FFs
+                    FFList = SysFF[0] # Contains Bond and/or Splines
+                    FFGaussians = SysFF[1] # Constains Gaussians
+                    
+                    PBond = FFList[0]
+                    if FixBondDist0:
+                        PBond.Dist0.Fixed = True
+                        PBond.Dist0 = PBondDist0
+                    else: 
+                        PBond.Dist0.Fixed = False
+                        PBond.Dist0 = PBondDist0
+                    if UseLocalDensity:
+                        PLD = FFList[1]
+                    
+                    for index, PGauss in enumerate(FFGaussians):
+                        if gID == index: # unfix parameters
+                            PGauss.B.Fixed = False
+                            PGauss.Kappa.Fixed = False
+                        else:
+                            PGauss.B.Fixed = True
+                            PGauss.Kappa.Fixed = True
+                        
+                # opt. 
+                OptimizerPrefix = ("{}_LSQFit_OptGauss{}".format(SrelName,gID))
+                RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                    
+                for index, PGauss in enumerate(FFGaussians):
+                    PGauss.B.Fixed = False
+                    PGauss.Kappa.Fixed = False
+            
+            # opt. ALL 
+            OptimizerPrefix = ("{}_LSQFit_OptGaussAll_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option5
+        
+        
+        # Option6
+        #*******************************************************************************************#
+        if GaussMethod == 6: 
+             
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            
+            # opt. all gausian Kappa's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = True
+                        PGauss.Kappa.Fixed = False
+                        
+            # opt. all gausian Kappa's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLKappas".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            
+            # opt. all parameters together
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                    
+                for index, PGauss in enumerate(FFGaussians):
+                    PGauss.B.Fixed = False
+                    PGauss.Kappa.Fixed = False
+            
+            # opt. ALL 
+            OptimizerPrefix = ("{}_LSQFit_OptGaussAll_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option6
+        
+        
+        # Option7
+        #*******************************************************************************************#
+        if GaussMethod == 7: 
+            FracMin = 0.75
+            FracMax = 1.25
+            
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                PBond.FConst.Fixed = False
+                PBond.FConst.min = FracMin*PBond.FConst
+                PBond.FConst.max = FracMax*PBond.FConst
+                
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = False
+                        PGauss.B.min = FracMin*PGauss.B
+                        PGauss.B.max = FracMax*PGauss.B
+                        PGauss.Kappa.min = FracMin*PGauss.Kappa
+                        PGauss.Kappa.max = FracMax*PGauss.Kappa
+                        
+            # opt. all
+            OptimizerPrefix = ("{}_LSQFit_OptALL_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option7
+        
+        
+        # Option8
+        #*******************************************************************************************#
+        if GaussMethod == 8: 
+            FracMin = 0.75
+            FracMax = 1.25
+            
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            
+            # opt. all gausian Kappa's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = True
+                        PGauss.Kappa.Fixed = False
+                        
+            # opt. all gausian Kappa's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLKappas".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                                    
+            # opt. all parameters, but with constraints on all parameters
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                PBond.FConst.Fixed = False
+                PBond.FConst.min = FracMin*PBond.FConst
+                PBond.FConst.max = FracMax*PBond.FConst
+                
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = False
+                        PGauss.B.min = FracMin*PGauss.B
+                        PGauss.B.max = FracMax*PGauss.B
+                        PGauss.Kappa.min = FracMin*PGauss.Kappa
+                        PGauss.Kappa.max = FracMax*PGauss.Kappa
+                        
+            # opt. all parameters
+            OptimizerPrefix = ("{}_LSQFit_OptALL_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option8
+ 
+        # Option9
+        #*******************************************************************************************#
+        if GaussMethod == 9: 
+            FracMin = 0.9
+            FracMax = 1.1
+            
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                                    
+            # opt. all parameters, but with constraints on all parameters
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                PBond.FConst.Fixed = False
+                PBond.FConst.min = FracMin*PBond.FConst
+                PBond.FConst.max = FracMax*PBond.FConst
+                
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = False
+                        PGauss.B.min = FracMin*PGauss.B
+                        PGauss.B.max = FracMax*PGauss.B
+                        PGauss.Kappa.min = FracMin*PGauss.Kappa
+                        PGauss.Kappa.max = FracMax*PGauss.Kappa
+                        
+            # opt. all parameters
+            OptimizerPrefix = ("{}_LSQFit_OptALL_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                        
+        #*******************************************************************************************#             
+        # End Option9
+        
+        # Option10
+        #*******************************************************************************************#
+        if GaussMethod == 10: 
+            
+            # opt. all gausian B's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = False
+                        PGauss.Kappa.Fixed = True
+                        
+            # opt. all gausian B's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLBs".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                                    
+            # opt. all gausian Kappa's  
+            for SysFF in SysFFList: #Loop through all system FFs
+                FFList = SysFF[0] # Contains Bond and/or Splines
+                FFGaussians = SysFF[1] # Constains Gaussians
+                
+                PBond = FFList[0]
+                if FixBondDist0:
+                    PBond.Dist0.Fixed = True
+                    PBond.Dist0 = PBondDist0
+                else: 
+                    PBond.Dist0.Fixed = False
+                    PBond.Dist0 = PBondDist0
+                if UseLocalDensity:
+                    PLD = FFList[1]
+           
+                for index, PGauss in enumerate(FFGaussians):
+                        PGauss.B.Fixed = True
+                        PGauss.Kappa.Fixed = False
+                        
+            # opt. all gausian Kappa's  
+            OptimizerPrefix = ("{}_LSQFit_OptALLKappas_Final".format(SrelName))
+            RunSrelOptimization(Optimizer,OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)                       
+                        
+        #*******************************************************************************************#             
+        # End Option10
+# output final gaussian potential
+if GaussMethod in {4,5,6,7,8,9,10}:
+    
+    r_max = Cut
+    r_min = 0.00001
+    
+    rs = opt[4]
+    u_gauss = opt[2][NumberGaussians-1]
+    u_spline = opt[3]
+    distances = np.linspace(r_min,r_max,1000)
+    
+    u_pot_final = []
+    SysFF = SysFFList[0] # Just pick first 
+    print('\nForce-fields being used to calculate final Gaussian basis set.')
+    print(SysFF[1])
+    for rij in distances:
+        val_temp = 0
+        for FF in SysFF[1]:
+            val_temp += FF.Val(rij)
+        u_pot_final.append(val_temp)
+    
+    np.savetxt('u_pot_final.data',zip(distances,np.asarray(u_pot_final))) 
+    
+    Knots = [float(i) for i in re.split(' |,',SplineKnots) if len(i)>0]
+    
+    plt.figure()
+    plt.plot(rs,u_spline,label="spline",linewidth = 3)
+    plt.plot(rs,u_gauss,label="{}-Gaussian".format(NumberGaussians),linewidth = 3)
+    plt.plot(distances,u_pot_final,label="Relaxed_{}-Gaussian".format(NumberGaussians),linewidth = 3)
+    rs_knots = np.linspace(0,Cut,(NSplineKnots))
+    plt.scatter(rs_knots,Knots,label = "spline knots",c='r')
+    plt.ylim(min(np.min(u_spline),np.min(u_gauss), np.min(u_pot_final))*2,4)
+    plt.xlim(0,Cut)
+    plt.xlabel('r')
+    plt.ylabel('u(r)')
+    plt.legend(loc='best')
+    plt.savefig('FinalGaussFit.pdf')  
+    plt.close()
+        
 ''' ***************************************************************** '''
 ''' Run the converged CG model to calculate Rg, Pressure, etc....     '''
 ''' ***************************************************************** '''                
@@ -532,9 +1006,6 @@ if RunConvergedCGModel:
     Make_molecules_whole    = True  # Uses MDTraj to make molecules whole
     SaveCalculationsToFile 	= True
 
-    import matplotlib
-    matplotlib.use("pdf")
-    import matplotlib.pyplot as plt
     import MDAnalysis as mda
     import mdtraj as md
     from pymbar import timeseries
@@ -588,10 +1059,12 @@ if RunConvergedCGModel:
 
             Int.Method = Int.Methods.VVIntegrate
             Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    	    Int.Method.TimeStep = Time_Step_DUMMY # note: reduced units
-	    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+    	    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
+            Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
             if UseSim:
+                fobj = open('measures_{}.dat'.format(Sys_Index), 'w')
+                Sys.Measures.VerboseOutput(fobj = fobj, StepFreq=5000)                                                                                                                                           
                 print "Now conducting warm-up...."
                 Int.Run(temp_StepsEquil)
                 #Sys.Measures.Reset()
