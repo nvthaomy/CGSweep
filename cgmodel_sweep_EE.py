@@ -126,7 +126,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     if RunSpline:
         PSpline = sim.potential.PairSpline(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
                                            NKnot = NSplineKnots, Label = 'Spline', 
-                                           NonbondEneSlope = "0.25kTperA", BondEneSlope = "0.25kTperA")
+                                           NonbondEneSlopeInit = "0.25kTperA", BondEneSlope = "0.25kTperA")
         if FitSpline:
             Max = 4.
             decay = 0.1
