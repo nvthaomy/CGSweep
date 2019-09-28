@@ -80,7 +80,9 @@ Cut             = Cut_DUMMY
 FixBondDist0    = True
 BondFConst      = BondFConst_DUMMY
 PBondDist0      = 0. # For zero centered bonds set to 0.
-UseLocalDensity = False
+PBondDist0          = BondDist0
+IncludeBondedAtoms  = IncludeBondedAtoms_DUMMY
+UseLocalDensity     = False                                                                      
 CoordMin        = 0    
 CoordMax        = 350
 LDKnots         = 10
@@ -127,7 +129,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = 0., FConst = 500., Label = 'Bond')
+                               Dist0 = BondDist0, FConst = 500., Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
@@ -135,9 +137,13 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     if GaussMethod in {4,5,6,7,8,9,10}:
         PBond.Param.FConst = BondFConst
     
+    if IncludeBondedAtoms:
+        Filter = sim.atomselect.Pairs
+    else:
+        Filter = sim.atomselect.NonbondPairs12
     ''' Add Splines '''
     if RunSpline:
-        PSpline = sim.potential.PairSpline(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
+        PSpline = sim.potential.PairSpline(Sys, Filter = Filter, Cut = Cut,
                                            NKnot = NSplineKnots, Label = 'Spline', 
                                            NonbondEneSlope = "0.25kTperA", BondEneSlope = "0.25kTperA")
         if FitSpline:
@@ -159,7 +165,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         GaussPot_List = []
         
         if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
-            opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., ng=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=3.25, 
+            opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., ng=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=2.5, 
                         SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = True, Cut_Length_Scale=4.,TailCorrection=False, TailWeight=1E6)
             
@@ -171,7 +177,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
             
         for g in range(NumberGaussians):
             temp_Label = 'LJGauss{}'.format(g)
-            temp_Gauss = sim.potential.LJGaussian(Sys, Filter = sim.atomselect.Pairs, Cut = Cut,
+            temp_Gauss = sim.potential.LJGaussian(Sys, Filter = Filter, Cut = Cut,
                                  Sigma = 1.0, Epsilon = 0.0, B = 0., Kappa = 0.15,
                                  Dist0 = 0.0, Label = temp_Label)
             
@@ -495,7 +501,10 @@ if RunOptimization:
         # Option2
         #*******************************************************************************************#
         if GaussMethod == 2: 
-             
+            #Set Kappa Constraints, s.t. kappa's for Gaussians above 1st are always longer than the first 
+            Constrain_Kappa = False
+            G1_Kappa_Min = None
+            
             for gID in range(NumberGaussians):
                 for SysFF in SysFFList: #Loop through all system FFs
                     FFList = SysFF[0] # Contains Bond and/or Splines
@@ -513,10 +522,18 @@ if RunOptimization:
                     
                     for index, PGauss in enumerate(FFGaussians):
                         PGauss.FreezeSpecificParam([0,1,4]) # Always Freeze LJ and Gauss offsets
-			PGauss.MinHistFrac = 0.01
+                        PGauss.MinHistFrac = 0.01
+                        
+                        if index == 0 and gID > 0 and Constrain_Kappa == True:
+                            # Get the minimum kappa
+                            G1_Kappa_Min = PGauss.Kappa.Min                            
+                        
                         if gID == index: # unfix parameters
                             PGauss.B.Fixed = False
                             PGauss.Kappa.Fixed = False
+                            if Constrain_Kappa and G1_Kappa_Min is not None:
+                                PGauss.Kappa.Min = G1_Kappa_Min
+                                print('PGauss {} Kappa Minimum: {}'.format(index,G1_Kappa_Min))
                         else:
                             PGauss.B.Fixed = True
                             PGauss.Kappa.Fixed = True
@@ -850,8 +867,8 @@ if RunOptimization:
         # Option9
         #*******************************************************************************************#
         if GaussMethod == 9: 
-            FracMin = 0.9
-            FracMax = 1.1
+            FracMin = 0.999
+            FracMax = 1.001
             
             # opt. all gausian B's  
             for SysFF in SysFFList: #Loop through all system FFs
