@@ -7,6 +7,7 @@ Created on Mon Aug 12 14:47:10 2019
 """
 import numpy as np
 from scipy.optimize import least_squares
+from scipy.integrate import simps
 import spline, sys, argparse, re
 import matplotlib.pyplot as plt
 from math import ceil, log, floor
@@ -28,11 +29,11 @@ import os
 #test command
 #python spline2gaussians-leastsquares.py  -k "2.7835e+02 , 3.3541e+00 , -5.8015e-01, 1.6469e-01 ,-1.1965e-01, 5.2720e-02 , -2.3451e-02, 2.6243e-03" -cut 11 -n 2
 
-def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, U_max_2_consider, 
+def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max_2_consider, 
                         SlopeCut=-10., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = False, Cut_Length_Scale=1., TailCorrection=False, TailWeight=1E6):
     
-    
+    n = ng
     knots = [float(i) for i in re.split(' |,',knots) if len(i)>0]
     
     SlopeCut = SlopeCut # Setting for outpicking the number of Gaussians to use in basis set
@@ -118,7 +119,16 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, 
     u_spline, du_spline = getUspline(knots,rcut,rs)
     u_max = np.max(u_spline)
     np.savetxt('u_spline.data', u_spline)
-
+    
+    # Get the integral of the pair potential and the second virial coeff
+    rs_temp = np.linspace(0,rcut,1E6)
+    rssq = np.multiply(rs_temp,rs_temp)
+    u_spline_temp, du_spline_temp = getUspline(knots,rcut,rs_temp)
+    integrand_pot = np.multiply(u_spline_temp,rssq)
+    integrand_virial = 4*np.pi*np.multiply(rssq,(1-np.exp(-u_spline_temp)))
+    int_pot = simps(integrand_pot,rs_temp)
+    int_virial = simps(integrand_virial,rs_temp)
+    
     if autofindrcutinner:
         for i,val in enumerate(u_spline):
             if val < U_max_2_consider and i == 0:
@@ -233,7 +243,8 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, 
     ''' One method to pick optimal number of Gaussians. '''
     derLSQObj = []
     index_opt = None
-    for i,val in enumerate(cost_list):
+    logout = open("fitting.data",'a')
+    for i,val in enumerate(cost_list):        
         if i == 0:
             pass
         else:
@@ -241,12 +252,22 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, n, nostage=False, N, BoundSetting, 
             derLSQObj.append(der_temp)
             if der_temp > SlopeCut and index_opt == None:
                 index_opt = i-1
-            elif index_opt != None and cost_list[i-1]/val > 7:
+            elif index_opt != None and cost_list[i-1]/val > 2.:                
                 index_opt = i
             elif i == (len(cost_list)-1) and index_opt == None:
                 index_opt = i # Pick the last one so nothing crashes or if only one is specified
-
-    logout = open("fitting.data",'a')
+            logout.write('derivative: {}\n'.format(der_temp))
+            logout.write('Val[i-1]/val: {}\n'.format(cost_list[i-1]/val))
+    
+    Override = False
+    if Override:
+        index_opt = 2
+    
+    logout.write('\n The integral of the pair potential:\n')
+    logout.write('{}'.format(int_pot))
+    logout.write('\n The second virial coefficient:\n')
+    logout.write('{}'.format(int_virial))
+    
     logout.write('\nOptimal number of Gaussians are {}\n'.format(gauss_list[index_opt]))
     logout.write('Optimal parameters: \n')
     logout.write('\n{}'.format(param_list[index_opt]))
