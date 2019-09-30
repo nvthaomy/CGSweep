@@ -217,7 +217,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             if UseWPenalty:	
                 if ExpEnsemble:
                         param_value = str(param_value[TrajListInd])
-                    else:
+                else:
                         param_value = "[{}]".format(param_value[TrajListInd])
             else:
                 param_value = "[]"
@@ -233,7 +233,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         if 'BondFConst' in param_name and RunGauss:
            if ExpEnsemble:
                 param_value = "{}".format(param_value[TrajListInd][0])
-            else:
+           else:
                 param_value = "{}".format(param_value[0]) 
         if ExpEnsemble == True and 'DOP' in param_name:
             param_value = param_value[TrajListInd]
