@@ -19,7 +19,7 @@ JobRunTime = '500:00:00'
 #----------------------
 #System related options
 #----------------------
-DOP = [50,50,40,40,30,30,20,20]
+DOP = 36 
 CG_Mappings = [5,10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 NMolList = [[2,20],[2,20],[3,25],[3,25],[04,34],[04,34],[05,50],[05,50]]
@@ -60,6 +60,7 @@ StepsStride 		= 100
 #Options for pair potential
 #--------------------------
 Cut = 20.
+IncludeBondedAtoms = True
 RunSpline = True
 NSplineKnots = 15
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
@@ -94,14 +95,14 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep']
+						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep]
+						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep,IncludeBondedAtoms]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -230,8 +231,10 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             param_value = "'{}'".format(str(param_value[TrajListInd][0]))
             
         if 'BondFConst' in param_name and RunGauss:
-            param_value = "{}".format(str(param_value[TrajListInd][0]))
-            
+           if ExpEnsemble:
+                param_value = "{}".format(param_value[TrajListInd][0])
+            else:
+                param_value = "{}".format(param_value[0]) 
         if ExpEnsemble == True and 'DOP' in param_name:
             param_value = param_value[TrajListInd]
 

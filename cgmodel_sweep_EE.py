@@ -45,10 +45,6 @@ sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
 sim.export.omm.UseTabulated = True
 
 #Srel Settings
-print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
-print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
-print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
-
 sim.srel.optimizetraj.CGGradTol = 1E-3
 sim.srel.optimizetraj.CGAbsTol = 1E-7
 sim.srel.optimizetraj.CGFracTol = 1E-7
@@ -80,7 +76,6 @@ Cut             = Cut_DUMMY
 FixBondDist0    = True
 BondFConst      = BondFConst_DUMMY
 PBondDist0      = 0. # For zero centered bonds set to 0.
-PBondDist0          = BondDist0
 IncludeBondedAtoms  = IncludeBondedAtoms_DUMMY
 UseLocalDensity     = False                                                                      
 CoordMin        = 0    
@@ -129,7 +124,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = BondDist0, FConst = .1, Label = 'Bond')
+                               Dist0 = PBondDist0, FConst = .1, Label = 'Bond')
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
