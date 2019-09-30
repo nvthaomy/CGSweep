@@ -167,7 +167,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
             opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., ng=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=2.5, 
                         SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
-                        weight_rssq = True, Cut_Length_Scale=4.,TailCorrection=False, TailWeight=1E6)
+                        weight_rssq = True, Cut_Length_Scale=1.,TailCorrection=False, TailWeight=1E6)
             
             print('\nOptimal number of Gaussians are {}\n'.format(opt[0]))
             print('Optimal parameters: \n')
