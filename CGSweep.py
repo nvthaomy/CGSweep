@@ -125,8 +125,7 @@ def GenerateSubmitScript(CGModelScript, cwd, lines_SubmitScript, SubmitScriptNam
     lines_SubmitScript = lines_SubmitScript.replace('CGModelScript_DUMMY', str(CGModelScript))
     
     with open(str(SubmitScriptName), 'w') as g:
-		g.write(lines_SubmitScript)
-    
+        g.write(lines_SubmitScript)
 def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
                                CGMap, RunSpline, NumberGauss, SubmitScriptName, SubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = None):
     ''' Main function for creating the CG directory 
