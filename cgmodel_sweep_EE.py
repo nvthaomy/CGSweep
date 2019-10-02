@@ -44,8 +44,6 @@ sim.srel.optimizetrajomm.OpenMMStepsMin = 0 #number of steps to minimize structu
 sim.srel.optimizetrajomm.OpenMMDelTempFiles = False #False is Default
 sim.export.omm.UseTabulated = True
 
-<<<<<<< HEAD
-=======
 #Srel Settings
 sim.srel.optimizetraj.CGGradTol = 1E-3
 sim.srel.optimizetraj.CGAbsTol = 1E-7
@@ -55,7 +53,6 @@ print('CGGradTol: {}'.format(sim.srel.optimizetraj.CGGradTol))
 print('CGAbsTol: {}'.format(sim.srel.optimizetraj.CGAbsTol))
 print('CGFracTol: {}'.format(sim.srel.optimizetraj.CGFracTol))
 
->>>>>>> development
 #External Potential Settings
 Ext = {"UConst": UConst_DUMMY, "NPeriods": NPeriods_DUMMY, "PlaneAxis": PlaneAxis_DUMMY, "PlaneLoc": PlaneLoc_DUMMY}
 if Ext["UConst"] > 0:
@@ -127,11 +124,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
     PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-<<<<<<< HEAD
-                               Dist0 = 0., FConst = 1., Label = 'Bond')
-=======
                                Dist0 = PBondDist0, FConst = .1, Label = 'Bond')
->>>>>>> development
     
     PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
@@ -167,11 +160,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         GaussPot_List = []
         
         if GaussMethod in {4,5,6,7,8,9,10}: # Fitting Gaussians to spline
-<<<<<<< HEAD
-            opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., n=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=3.25, 
-=======
             opt = GaussianBasisLSQ(knots=SplineKnots, rcut=Cut, rcutinner=0., ng=10, nostage=False, N=2000, BoundSetting='Option1', U_max_2_consider=2.5, 
->>>>>>> development
                         SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = True, Cut_Length_Scale=1.,TailCorrection=False, TailWeight=1E6)
             
@@ -334,14 +323,10 @@ for index, NMol in enumerate(NMol_List):
 
     # Freeze parameters that never change
     PBond = SysTemp.ForceField[0]
-<<<<<<< HEAD
-=======
     if FixBondDist0:
         PBond.Dist0.Fixed = True
         PBond.Dist0 = PBondDist0
 
-    
->>>>>>> development
     ''' Now setting initial system optimizations. '''
     if SysLoadFF: # option to load in trajectory to seed the optimization
         with open(force_field_file, 'r') as of: s = of.read()
@@ -356,17 +341,6 @@ for index, NMol in enumerate(NMol_List):
     for (i, a) in enumerate(SysTemp.Atom):
         MapTemp += [sim.atommap.AtomMap(Atoms1 = i, Atom2 = a)]
     
-<<<<<<< HEAD
-    # Freeze parameters that never change
-    PBond = SysTemp.ForceField[0]
-    if FixBondDist0:
-        PBond.Dist0.Fixed = True
-        PBond.Dist0 = PBondDist0     
-    else:
-        PBond.Dist0 = PBondDist0
-    
-=======
->>>>>>> development
     ''' Setup Optimizers '''
     if UseLammps:
         OptClass = sim.srel.optimizetrajlammps.OptimizeTrajLammpsClass
@@ -631,10 +605,7 @@ if RunOptimization:
                     FFList = SysFF[0] # Contains Bond and/or Splines
                     FFGaussians = SysFF[1] # Constains Gaussians
                     
-<<<<<<< HEAD
                     PBond = FFList[0]
-=======
->>>>>>> development
                     if UseLocalDensity:
                         PLD = FFList[1]
                     
@@ -675,10 +646,7 @@ if RunOptimization:
                 FFList = SysFF[0] # Contains Bond and/or Splines
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
-<<<<<<< HEAD
                 PBond = FFList[0]
-=======
->>>>>>> development
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -695,10 +663,7 @@ if RunOptimization:
                 FFList = SysFF[0] # Contains Bond and/or Splines
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
-<<<<<<< HEAD
                 PBond = FFList[0]
-=======
->>>>>>> development
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -772,10 +737,7 @@ if RunOptimization:
                 FFList = SysFF[0] # Contains Bond and/or Splines
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
-<<<<<<< HEAD
                 PBond = FFList[0]
-=======
->>>>>>> development
                 if UseLocalDensity:
                     PLD = FFList[1]
            
@@ -792,10 +754,7 @@ if RunOptimization:
                 FFList = SysFF[0] # Contains Bond and/or Splines
                 FFGaussians = SysFF[1] # Constains Gaussians
                 
-<<<<<<< HEAD
                 PBond = FFList[0]
-=======
->>>>>>> development
                 if UseLocalDensity:
                     PLD = FFList[1]
            
