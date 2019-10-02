@@ -13,30 +13,21 @@ CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
 SpecialName     = 'NoP'
-NumberThreads = 1
+NumberThreads = 8
 JobRunTime = '500:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = 36 
-CG_Mappings = [5,10]
+DOP = [36,36] 
+CG_Mappings = [1]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
-NMolList = [[2,20],[2,20],[3,25],[3,25],[04,34],[04,34],[05,50],[05,50]]
+NMolList =  [[4,50,100],[4,100]]   
 
-TrajList = [['CG_AtomPos_T075_N50_x0.01','CG_AtomPos_T075_N50_x0.10'],
-            ['CG_AtomPos_T120_N50_x0.01','CG_AtomPos_T120_N50_x0.10'],
-            ['CG_AtomPos_T075_N40_x0.01','CG_AtomPos_T075_N40_x0.10'],
-            ['CG_AtomPos_T120_N40_x0.01','CG_AtomPos_T120_N40_x0.10'],
-            ['CG_AtomPos_T075_N30_x0.01','CG_AtomPos_T075_N30_x0.10'],
-            ['CG_AtomPos_T120_N30_x0.01','CG_AtomPos_T120_N30_x0.10'],
-            ['CG_AtomPos_T075_N20_x0.01','CG_AtomPos_T075_N20_x0.10'],
-            ['CG_AtomPos_T120_N20_x0.01','CG_AtomPos_T120_N20_x0.10']]
+TrajList = [['xp0.024_wrapped','xp0.3_wrapped', 'xp0.6_wrapped'],['xp0.024_wrapped','xp0.6_wrapped']]
             
-            
-            
-SplineKnots = [['4.7296e+00 , 9.9238e-01 , 1.3307e-01 , -3.2990e-02, -7.4872e-02, -7.8832e-02, -6.3980e-02']] # If fitting gaussians to splines
-BondFConst = [[8.0684e-03]]
+SplineKnots = [['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03'],['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03']] # If fitting gaussians to splines
+BondFConst = [[400.],[400.]]
 Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
     
 #------------------------
@@ -49,8 +40,8 @@ UseLammps 			= True
 UseSim 	 			= False
 TimeStep            = 0.001
 ScaleRuns 			= True
-RunStepScaleList 	= [[3,1],[3,1],[4,1],[4,1],[5,2],[5,2],[10,4],[10,4]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+RunStepScaleList 	= [[3,2,1],[3,1]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
+SysLoadFF 			= False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
 force_field_file 	= 'CG_run_OptSpline_converged_ff.dat' 
 StepsEquil 		  	= 5e5
 StepsProd 			= 5e6
@@ -59,16 +50,16 @@ StepsStride 		= 100
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 20.
+Cut = 10.
 IncludeBondedAtoms = True
 RunSpline = True
-NSplineKnots = 15
-SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
+NSplineKnots = 20
+SplineOption = "'Option3'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
 RunGauss = False
-NumberGaussianBasisSets = [1]
-GaussMethod = 1
+NumberGaussianBasisSets = [10]
+GaussMethod = 9
 
 #External potential
 UConst = 0.0 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
@@ -230,7 +221,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             print(param_value[TrajListInd])
             param_value = "'{}'".format(str(param_value[TrajListInd][0]))
             
-        if 'BondFConst' in param_name and RunGauss:
+        if 'BondFConst' in param_name:
            if ExpEnsemble:
                 param_value = "{}".format(param_value[TrajListInd][0])
            else:
@@ -330,3 +321,10 @@ elif ExpEnsemble == True:
                     # Create the CG directory
                     CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_ParameterNames, CGModel_Parameters, 
                                                 CGMap, temp_RunSpline, NumberGauss, SubmitScriptName, temp_CGSubmitScript, NumberThreads, RunName, JobRunTime, TrajListInd = i)
+
+               
+
+                   
+    
+        
+
