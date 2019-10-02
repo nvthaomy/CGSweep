@@ -235,7 +235,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
                 param_value = "{}".format(param_value[TrajListInd][0])
            else:
                 param_value = "{}".format(param_value[0]) 
-        if ExpEnsemble == True and 'DOP' in param_name:
+        if 'DOP' in param_name:
             param_value = param_value[TrajListInd]
 
         temp_CGModel = temp_CGModel.replace((str(param_name)+'_DUMMY'), str(param_value))
