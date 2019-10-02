@@ -8,18 +8,18 @@ import os, sys
 from shutil import copyfile
 #=================
 ''' USER-INPUT '''
-TrajFileDir = 'Trajectories'
+TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
-SpecialName     = 'VarN_Option2'
+SpecialName     = 'NoP'
 NumberThreads = 1
-JobRunTime = '140:00:00'
+JobRunTime = '500:00:00'
 
 #----------------------
 #System related options
 #----------------------
-DOP = [50,50,40,40,30,30,20,20]
+DOP = 36 
 CG_Mappings = [5,10]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 NMolList = [[2,20],[2,20],[3,25],[3,25],[04,34],[04,34],[05,50],[05,50]]
@@ -52,16 +52,17 @@ ScaleRuns 			= True
 RunStepScaleList 	= [[3,1],[3,1],[4,1],[4,1],[5,2],[5,2],[10,4],[10,4]] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
 force_field_file 	= 'CG_run_OptSpline_converged_ff.dat' 
-StepsEquil 		  	= 100000
-StepsProd 			= 1000000
-StepsStride 		= 10
+StepsEquil 		  	= 5e5
+StepsProd 			= 5e6
+StepsStride 		= 100
 
 #--------------------------
 #Options for pair potential
 #--------------------------
-Cut = 30.
+Cut = 20.
+IncludeBondedAtoms = True
 RunSpline = True
-NSplineKnots = 7
+NSplineKnots = 15
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
@@ -79,8 +80,8 @@ PlaneLoc = 0.
 #Options for MD on converged CG model (MD steps are scaled by RunStepScaleList)
 #------------------------------------------------------------------------------
 NSteps_Min = 1000
-NSteps_Equil = 10e6
-NSteps_Prod = 25e6
+NSteps_Equil = 2e6
+NSteps_Prod = 50e6
 WriteFreq = 5000
 
 # parameter names and their values; need to specify trajectorylist above 
@@ -94,14 +95,14 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep']
+						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep]
+						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep,IncludeBondedAtoms]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -230,9 +231,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             param_value = "'{}'".format(str(param_value[TrajListInd][0]))
             
         if 'BondFConst' in param_name and RunGauss:
-            param_value = "{}".format(str(param_value[TrajListInd][0]))
-            
-        if ExpEnsemble == True and 'DOP' in param_name:
+           if ExpEnsemble:
+                param_value = "{}".format(param_value[TrajListInd][0])
+           else:
+                param_value = "{}".format(param_value[0]) 
+        if 'DOP' in param_name:
             param_value = param_value[TrajListInd]
 
         temp_CGModel = temp_CGModel.replace((str(param_name)+'_DUMMY'), str(param_value))
