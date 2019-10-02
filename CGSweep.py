@@ -176,7 +176,11 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
             for file in files:
                 if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
                     copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-            
+    #copy python modules
+    files = ['spline.py','stats.py','stats_TrajParse.py','HistogramTools.py','spline2gaussians_leastsquares.py']
+    for f in files:
+        copyfile(os.path.join(cwd,f),os.path.join(cwd,RunDirName,f))
+         
     # move into new directory
     os.chdir(RunDirName)
     
