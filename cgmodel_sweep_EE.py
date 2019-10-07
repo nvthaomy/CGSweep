@@ -886,43 +886,43 @@ if RunOptimization:
         #*******************************************************************************************#             
         # End Option10
 # output final gaussian potential
-if GaussMethod in {4,5,6,7,8,9,10}:
+#if GaussMethod in {4,5,6,7,8,9,10} :
     
-    r_max = Cut
-    r_min = 0.00001
+#    r_max = Cut
+#    r_min = 0.00001
     
-    rs = opt[4]
-    u_gauss = opt[2][NumberGaussians-1]
-    u_spline = opt[3]
-    distances = np.linspace(r_min,r_max,1000)
+#    rs = opt[4]
+#    u_gauss = opt[2][NumberGaussians-1]
+#    u_spline = opt[3]
+#    distances = np.linspace(r_min,r_max,1000)
     
-    u_pot_final = []
-    SysFF = SysFFList[0] # Just pick first 
-    print('\nForce-fields being used to calculate final Gaussian basis set.')
-    print(SysFF[1])
-    for rij in distances:
-        val_temp = 0
-        for FF in SysFF[1]:
-            val_temp += FF.Val(rij)
-        u_pot_final.append(val_temp)
+#    u_pot_final = []
+#    SysFF = SysFFList[0] # Just pick first 
+#    print('\nForce-fields being used to calculate final Gaussian basis set.')
+#    print(SysFF[1])
+#    for rij in distances:
+#        val_temp = 0
+#        for FF in SysFF[1]:
+#            val_temp += FF.Val(rij)
+#        u_pot_final.append(val_temp)
     
-    np.savetxt('u_pot_final.data',zip(distances,np.asarray(u_pot_final))) 
+#    np.savetxt('u_pot_final.data',zip(distances,np.asarray(u_pot_final))) 
     
-    Knots = [float(i) for i in re.split(' |,',SplineKnots) if len(i)>0]
+#    Knots = [float(i) for i in re.split(' |,',SplineKnots) if len(i)>0]
     
-    plt.figure()
-    plt.plot(rs,u_spline,label="spline",linewidth = 3)
-    plt.plot(rs,u_gauss,label="{}-Gaussian".format(NumberGaussians),linewidth = 3)
-    plt.plot(distances,u_pot_final,label="Relaxed_{}-Gaussian".format(NumberGaussians),linewidth = 3)
-    rs_knots = np.linspace(0,Cut,(NSplineKnots))
-    plt.scatter(rs_knots,Knots,label = "spline knots",c='r')
-    plt.ylim(min(np.min(u_spline),np.min(u_gauss), np.min(u_pot_final))*2,4)
-    plt.xlim(0,Cut)
-    plt.xlabel('r')
-    plt.ylabel('u(r)')
-    plt.legend(loc='best')
-    plt.savefig('FinalGaussFit.pdf')  
-    plt.close()
+#    plt.figure()
+#    plt.plot(rs,u_spline,label="spline",linewidth = 3)
+#    plt.plot(rs,u_gauss,label="{}-Gaussian".format(NumberGaussians),linewidth = 3)
+#    plt.plot(distances,u_pot_final,label="Relaxed_{}-Gaussian".format(NumberGaussians),linewidth = 3)
+#    rs_knots = np.linspace(0,Cut,(NSplineKnots))
+#    plt.scatter(rs_knots,Knots,label = "spline knots",c='r')
+#    plt.ylim(min(np.min(u_spline),np.min(u_gauss), np.min(u_pot_final))*2,4)
+#    plt.xlim(0,Cut)
+#    plt.xlabel('r')
+#    plt.ylabel('u(r)')
+#    plt.legend(loc='best')
+#    plt.savefig('FinalGaussFit.pdf')  
+#    plt.close()
         
 ''' ***************************************************************** '''
 ''' Run the converged CG model to calculate Rg, Pressure, etc....     '''
