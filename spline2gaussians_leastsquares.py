@@ -139,7 +139,8 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
         rs = np.linspace(rcutinner,rcut,N)
         u_spline, du_spline = getUspline(knots,rcut,rs)
         u_max = np.max(u_spline)   
-        
+    else:
+        rs = np.linspace(0,rcut,N)        
 
     w = weight(rs,u_spline, weight_rssq)
     np.savetxt('weights.data',zip(rs,w))
@@ -307,3 +308,16 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
     if SaveToFile: os.chdir('..')
     
     return [gauss_list[index_opt], param_list[index_opt], u_gauss_list, u_spline, rs]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="decomposing spline into Gaussians using least squares")
+    parser.add_argument("-k",required = True ,type = str, help="cubic spline knots, e.g. '1,2,3' or '1 2 3'")
+    parser.add_argument("-cut", required = True, type = float, help = "cut off distance")
+    parser.add_argument("-n", default = 10, type = int, help="number of Gaussians")
+    parser.add_argument("-N", default = 2000, type = int, help="number of points used for fitting")
+    parser.add_argument("-nostage", action = 'store_true')
+    parser.add_argument("-x0", type = str,help="initial values for Gaussian parameters, format '1 0.5 -10  0.1'")
+    args = parser.parse_args()
+    GaussianBasisLSQ(knots=args.k, rcut=args.cut, rcutinner=0., ng=args.n, nostage=False, N=args.N, BoundSetting='Option1', U_max_2_consider=None,
+                        SlopeCut=-1., ShowFigures=True, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
+                        weight_rssq = True, Cut_Length_Scale=1.,TailCorrection=False, TailWeight=1E6)
+
