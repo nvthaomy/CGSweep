@@ -29,7 +29,7 @@ import os
 #test command
 #python spline2gaussians-leastsquares.py  -k "2.7835e+02 , 3.3541e+00 , -5.8015e-01, 1.6469e-01 ,-1.1965e-01, 5.2720e-02 , -2.3451e-02, 2.6243e-03" -cut 11 -n 2
 
-def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max_2_consider, 
+def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max_2_consider, FFfile, SplineName, GaussName,
                         SlopeCut=-10., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = False, Cut_Length_Scale=1., TailCorrection=False, TailWeight=1E6):
     
@@ -47,7 +47,6 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
         except:
             pass 
         os.chdir(SaveFileName)
-
     def ceil_power_of_10(n):
         exp = log(n, 10)
         exp = ceil(exp)
@@ -139,10 +138,10 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
         rs = np.linspace(rcutinner,rcut,N)
         u_spline, du_spline = getUspline(knots,rcut,rs)
         u_max = np.max(u_spline)   
-    else:
-        rs = np.linspace(0,rcut,N)        
 
     w = weight(rs,u_spline, weight_rssq)
+    print ('w {}'.format(w))
+    print ('rs {}'.format(rs))
     np.savetxt('weights.data',zip(rs,w))
     kappa_lowerbound = Cut_Length_Scale/rcut**2
 
@@ -279,6 +278,37 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
     logout.close()        
     np.savetxt('slope.data', zip(gauss_list[1:],derLSQObj))        
 
+    #write out forcefield file
+    if FFfile:
+        if SaveToFile:
+            f = open('../'+FFfile, 'r')
+        else:
+            f = open(FFfile, 'r')
+        str = f.read()
+        f.close()
+        str = [val for val in str.split('>>> POTENTIAL ')]
+        for i, val in enumerate(str):
+            if SplineName in val: #find index of the spline param string and remove it
+                str[i] = ''
+        GaussStr = []
+        optNGauss = gauss_list[index_opt]
+        optGaussParam = param_list[index_opt]
+        for i in range(optNGauss):
+            s = "{}{}".format(GaussName,i)
+            s += "\n{'Epsilon' : 0.0000e+00 ,"
+            s += "\n 'B' :  {} ,".format(optGaussParam[2*i])
+            s += "\n 'Kappa' :  {} ,".format(optGaussParam[2*i+1])
+            s += """\n 'Dist0' : 0.0000e+00 ,
+ 'Sigma' : 1.0000e+00 }\n"""
+            GaussStr.append(s)
+        str.extend(GaussStr)
+        str = [val for val in str if len(val) > 0]
+        str = '>>> POTENTIAL '.join(str)
+        str = '>>> POTENTIAL ' + str
+        ff = open('CG_SplineTo{}Gauss_ff.dat'.format(optNGauss),'w')
+        ff.write(str)
+
+    #plot
     u_gauss = getUgauss(xopt,rs,n)
     plt.figure()
     plt.plot(rs,u_spline,label="spline",linewidth = 3)
@@ -309,15 +339,41 @@ def GaussianBasisLSQ(knots, rcut, rcutinner, ng, nostage, N, BoundSetting, U_max
     
     return [gauss_list[index_opt], param_list[index_opt], u_gauss_list, u_spline, rs]
 if __name__ == "__main__":
+    """Out: 
+       Plots, parameters from fitted multiple Gaussians to a spline
+       Force field file with optimal set of Gaussian parameters to use in Srel if supplying a ff.dat file from converged Srel optimization
+       Note: if supplying ff.dat, need to make sure SplineName in this code is consistent with that in ff.dat
+             and GaussName is the name of Gaussian pair that will be used in Srel
+       """
     parser = argparse.ArgumentParser(description="decomposing spline into Gaussians using least squares")
-    parser.add_argument("-k",required = True ,type = str, help="cubic spline knots, e.g. '1,2,3' or '1 2 3'")
     parser.add_argument("-cut", required = True, type = float, help = "cut off distance")
+    parser.add_argument("-ff", help = 'converged force field data file using spline from Srel, if supplied will output ff data file with Gaussian parameters')
+    parser.add_argument("-k", type = str, help="optional if ff.dat is supplied, cubic spline knots, e.g. '1,2,3' or '1 2 3'")
     parser.add_argument("-n", default = 10, type = int, help="number of Gaussians")
     parser.add_argument("-N", default = 2000, type = int, help="number of points used for fitting")
     parser.add_argument("-nostage", action = 'store_true')
-    parser.add_argument("-x0", type = str,help="initial values for Gaussian parameters, format '1 0.5 -10  0.1'")
+    parser.add_argument("-x0", type = str, help = "initial values for Gaussian parameters, format '1 0.5 -10  0.1'")
+    parser.add_argument("-umax", type = float, help = 'potential to calculate inner cutoff',default=None)
     args = parser.parse_args()
-    GaussianBasisLSQ(knots=args.k, rcut=args.cut, rcutinner=0., ng=args.n, nostage=False, N=args.N, BoundSetting='Option1', U_max_2_consider=None,
-                        SlopeCut=-1., ShowFigures=True, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
+
+    if args.ff: #read knots info from ff file and write out ff file with Gaussian param
+        SplineName = 'Spline' #name of pair spline potential in ff.dat
+        GaussName = 'LJGauss' #name of pair gauss potential in ff.dat
+        f = open(args.ff,'r')
+        str = f.read()
+        f.close()
+        knots = str.split('>>> POTENTIAL')
+        for i in knots:
+            if SplineName in i:
+                knots = i
+        knots = re.split('\[|\]',knots)[1]   
+    else:
+        if len(args.k) == 0 :
+            raise Exception("Need to supply forcefile file from Srel using -ff flag or knots using -k flag")
+        else:
+            knots = args.k
+
+    GaussianBasisLSQ(knots = knots, rcut=args.cut, rcutinner=0., ng=args.n, nostage=False, N=args.N, BoundSetting='Option1', U_max_2_consider=args.umax, FFfile = args.ff, SplineName = SplineName, GaussName = GaussName,
+                        SlopeCut=-1., ShowFigures=False, SaveToFile=True, SaveFileName = 'GaussianLSQFitting',
                         weight_rssq = True, Cut_Length_Scale=1.,TailCorrection=False, TailWeight=1E6)
 
