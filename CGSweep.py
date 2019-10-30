@@ -59,7 +59,7 @@ SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
 RunGauss = False
 NumberGaussianBasisSets = [10]
-GaussMethod = 9
+GaussMethod = 1
 
 #External potential
 UConst = 0.0 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
