@@ -6,6 +6,7 @@ import os, numpy as np, time, cPickle as pickle
 import sim, pickleTraj
 from spline2gaussians_leastsquares import GaussianBasisLSQ # This also requires spline to be imported
 import re         
+import sim.potential.base.potentialtypes as ptypes
 
 print sim
 
@@ -116,6 +117,15 @@ WeightSysByMolecules = False # Option to weight E.E. systems by the number of mo
 WeightSysByMoleculeRatios = True # Option to weight E.E. systems by the ratio of number of molecules
 
 ''' Bulk of Code '''
+def IsBondSpline(Sys):
+    """check if using spline for bonded potential and turn on spline bond in export/lammps.py"""
+    for P in Sys.ForceField:
+        if isinstance(P, sim.potential.PairSpline) and P.Filter.Bonded and P.Type == ptypes.PairPotential:
+            BondSpline = True
+        else:
+            BondSpline = False
+    return BondSpline
+
 def FreezeParameters(System_List, Pot, Parameters):
     # - Pot is the index of the potential with parameters to freeze.
     # - Parmaters is a list of parameters to freeze in Pot.
@@ -443,8 +453,18 @@ for BondFunc in BondFuncs:
             print (Weights)
     
         Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
-        
-                    
+         
+        #check for spline bond
+        counter = 0
+        IsBondSpline_temp_old = False
+        for Sys in SysList:
+            IsBondSpline_temp = IsBondSpline(Sys)
+            sim.export.lammps.BondSpline =  IsBondSpline(Sys)
+            if counter > 0 and IsBondSpline_temp != IsBondSpline_temp_old:
+                raise Exception('All systems must have the same form of bonded potential')
+            counter += 1
+            IsBondSpline_temp_old = IsBondSpline(Sys)
+            
         #by default, spline pair slope is required to be larger than 0, don't need to relax contraints separately 
         if BondFunc == 'harmonic':
             sim.export.lammps.BondSpline = False
@@ -602,6 +622,9 @@ if RunConvergedCGModel:
                 print "timing:", Int.TimeElapsed
                 print "\n"
             
+            #check for spline bond
+            sim.export.lammps.BondSpline =  IsBondSpline(Sys)
+ 
             if UseLammpsMD:
                 if OutputDCD:
                     TrajFile = 'production_{}.dcd'.format(Sys_Index)
