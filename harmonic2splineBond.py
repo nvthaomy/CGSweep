@@ -2,11 +2,11 @@ import numpy as np
 import ast, re
 """Convert harmonic bond to spline and write out new ff file"""
 #--Inputs---
-FFfile = 'CG_run_OptSpline_Final_ff.dat'
-OutFF = FFfile.split('ff.dat')[0] + 'SplineBond_ff.dat'
+FFfile = 'xp0.09_wrapped_CGMap_12_Spline_NoP_table2_ff.dat'
 BondName = 'Bond'
 cut = 20.
-N = 15
+N = 20
+OutFF = FFfile.split('ff.dat')[0] + 'SplineBond_cut{}_NKnots{}_ff.dat'.format(int(cut),N)
 #----------
 
 rs = np.linspace(0,cut,N)

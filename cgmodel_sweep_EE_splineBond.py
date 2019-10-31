@@ -32,6 +32,7 @@ UseSim = UseSim_DUMMY
 
 
 # Default Simulation Package Settings
+sim.export.lammps.UseTable2 = True
 sim.export.lammps.InnerCutoff = 1.e-6
 sim.export.lammps.NPairPotentialBins = 1000
 sim.export.lammps.LammpsExec = 'lmp_omp'
