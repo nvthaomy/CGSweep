@@ -445,7 +445,7 @@ for BondFunc in BondFuncs:
         Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
         
                     
-        #by default, spline pair slope is only required to be larger than 0
+        #by default, spline pair slope is required to be larger than 0, don't need to relax contraints separately 
         if BondFunc == 'harmonic':
             sim.export.lammps.BondSpline = False
             Dict = SysFFList[0][0][0].ParamDict()
@@ -468,6 +468,15 @@ for BondFunc in BondFuncs:
                 for SysFF in SysFFList:
                     PSpline = SysFF[0][1]
                     PSpline.FreezeParam()
+                    PBond.RelaxKnotConstraints()
+                    #estimate outer slope
+                    if sum(PBond.Knots) > 0.:
+                        OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
+                        PBond.BondEneSlope = "{}kTperA".format(OuterSlope)
+                        print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                    else:
+                        PBond.BondEneSlope = "5.kTperA"
+
                 RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
                 #unfreeze pair
                 for SysFF in SysFFList:
@@ -485,6 +494,16 @@ for BondFunc in BondFuncs:
                 RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
             #spline bond + spline pair > relax knot constraints
             elif BondSplineMethod == 3:
+                for SysFF in SysFFList:
+                    PBond = SysFF[0][0]
+                    PBond.RelaxKnotConstraints()
+                    #estimate outer slope
+                    if sum(PBond.Knots) > 0.:
+                        OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
+                        PBond.BondEneSlope = "{}kTperA".format(OuterSlope)
+                        print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                    else:
+                        PBond.BondEneSlope = "5.kTperA"
                 OptimizerPrefix =  ("{}_SplineBond_SplinePair".format(SrelName))
                 RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
    
@@ -502,7 +521,6 @@ for BondFunc in BondFuncs:
 ''' ***************************************************************** '''                
              
 if RunConvergedCGModel:
-    sim.export.lammps.BondSpline = True
     UseLammpsMD     		= True
     UseSim          		= False
     CalcPress       		= True

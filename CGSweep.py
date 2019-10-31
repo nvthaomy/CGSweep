@@ -12,7 +12,7 @@ TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE_splineBond.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
-SpecialName     = 'SplineBond_NoP'
+SpecialName     = 'SplineBond_NoP_2'
 NumberThreads = 4
 JobRunTime = '500:00:00'
 
@@ -20,11 +20,11 @@ JobRunTime = '500:00:00'
 #System related options
 #----------------------
 DOP = [36,36,36,36,36] 
-CG_Mappings = [6]
+CG_Mappings = [9]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 #NMolList =  [4,15,50,100,150]   
 NMolList = [15]
-TrajList = ['xp0.09_wrapped']
+TrajList = ['xp0.09_wrapped_test']
 SplineKnots = [['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03'],['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03']] # If fitting gaussians to splines
 BondFConst = [1.e-2,1.,1.,1.,1.]
 Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
@@ -41,7 +41,7 @@ TimeStep            = 0.001
 ScaleRuns 			= True
 RunStepScaleList 	= [3,2] #[3,3,2,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file 	= 'xp0.09_wrapped_CGMap_6_Spline_NoP_ff.dat'
+force_field_file 	= 'xp0.09_wrapped_CGMap_9_Spline_NoP_table2_SplineBond_ff.dat'
 StepsEquil 		  	= 5e5
 StepsProd 			= 5e6
 StepsStride 		= 100
@@ -54,11 +54,11 @@ StepsStride 		= 100
 #   2 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint (for using input of spline from zero centered)
 #   3 = spline bond + spline pair > relax knot constraints
 BondSplineMethod = 1 # 1 2 3
-Bcut = 30.
+Bcut = 40.
 NBondKnots = 15
 FixBondDist0 = False
 
-Cut = 10.
+Cut = 15.
 IncludeBondedAtoms = True
 RunSpline = True
 NSplineKnots = 30
