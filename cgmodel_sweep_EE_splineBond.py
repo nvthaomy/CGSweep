@@ -492,8 +492,11 @@ for BondFunc in BondFuncs:
                     #estimate outer slope
                     if sum(PBond.Knots) > 0.:
                         OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
-                        PBond.BondEneSlope = "{}kTperA".format(OuterSlope)
-                        print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
+                        #print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
+                        print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
+
                     else:
                         PBond.BondEneSlope = "5.kTperA"
 
@@ -520,8 +523,11 @@ for BondFunc in BondFuncs:
                     #estimate outer slope
                     if sum(PBond.Knots) > 0.:
                         OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
-                        PBond.BondEneSlope = "{}kTperA".format(OuterSlope)
-                        print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
+                        #print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
+                        print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
+
                     else:
                         PBond.BondEneSlope = "5.kTperA"
                 OptimizerPrefix =  ("{}_SplineBond_SplinePair".format(SrelName))
