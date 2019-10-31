@@ -12,15 +12,15 @@ TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE_splineBond.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
-SpecialName     = 'testSplineBond'
-NumberThreads = 3
+SpecialName     = 'SplineBond_NoP'
+NumberThreads = 4
 JobRunTime = '500:00:00'
 
 #----------------------
 #System related options
 #----------------------
 DOP = [36,36,36,36,36] 
-CG_Mappings = [12]
+CG_Mappings = [6]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
 #NMolList =  [4,15,50,100,150]   
 NMolList = [15]
@@ -40,8 +40,8 @@ UseSim 	 			= False
 TimeStep            = 0.001
 ScaleRuns 			= True
 RunStepScaleList 	= [3,2] #[3,3,2,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF 			= False # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file 	= 'xp0.3_wrapped_CGMap_12_Spline_NoP_ff.dat'
+SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file 	= 'xp0.09_wrapped_CGMap_6_Spline_NoP_ff.dat'
 StepsEquil 		  	= 5e5
 StepsProd 			= 5e6
 StepsStride 		= 100
@@ -54,13 +54,14 @@ StepsStride 		= 100
 #   2 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint (for using input of spline from zero centered)
 #   3 = spline bond + spline pair > relax knot constraints
 BondSplineMethod = 1 # 1 2 3
-Bcut = 40
+Bcut = 30.
 NBondKnots = 15
+FixBondDist0 = False
 
-Cut = 20.
+Cut = 10.
 IncludeBondedAtoms = True
 RunSpline = True
-NSplineKnots = 15
+NSplineKnots = 30
 SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
@@ -93,14 +94,16 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'PlaneAxis','PlaneLoc','UseOMM','UseLammps','StepsEquil','StepsProd',
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
-						  'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms','NBondKnots','Bcut','BondSplineMethod']
+                          'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms',
+                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
                           PlaneAxis, PlaneLoc, UseOMM, UseLammps, StepsEquil, StepsProd,
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
-						  UseSim, SplineOption, SplineKnots, BondFConst, TimeStep, IncludeBondedAtoms, NBondKnots, Bcut,BondSplineMethod]
+		          UseSim, SplineOption, SplineKnots, BondFConst, TimeStep, IncludeBondedAtoms, 
+                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0]
 
 
 ''' LESS USED DEFAULT OPTIONS'''

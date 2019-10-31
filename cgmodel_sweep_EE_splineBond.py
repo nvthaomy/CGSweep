@@ -10,7 +10,8 @@ import re
 print sim
 
 """Srel for spline bond
-   If initiate with harmonic bond, should FixBondDist0 to False"""
+   If initiate with harmonic bond, should FixBondDist0 to False
+   TO DO: edit lammps export to automatically recognize bond spline"""
 
 #os.system('rm -rf pylib\n')
 #os.system('rm *pyc\n')
@@ -83,7 +84,7 @@ GaussMethod 		= GaussMethod_DUMMY
 BondSplineMethod = BondSplineMethod_DUMMY
 Bcut            = Bcut_DUMMY
 Cut             = Cut_DUMMY
-FixBondDist0    = False
+FixBondDist0    = FixBondDist0_DUMMY
 BondFConst      = BondFConst_DUMMY
 PBondDist0      = 0. # For zero centered bonds set to 0.
 IncludeBondedAtoms  = IncludeBondedAtoms_DUMMY
@@ -446,6 +447,7 @@ for BondFunc in BondFuncs:
                     
         #by default, spline pair slope is only required to be larger than 0
         if BondFunc == 'harmonic':
+            sim.export.lammps.BondSpline = False
             Dict = SysFFList[0][0][0].ParamDict()
             print ('Initial harmonic bond parameters')
             print (Dict)
@@ -459,6 +461,7 @@ for BondFunc in BondFuncs:
             HarmonicParam.append(Dict['Dist0'])
 
         else:
+            sim.export.lammps.BondSpline = True
             #spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint
             if BondSplineMethod in [1,2]:
                 OptimizerPrefix =  ("{}_SplineBond_FreezePair".format(SrelName))
@@ -499,6 +502,7 @@ for BondFunc in BondFuncs:
 ''' ***************************************************************** '''                
              
 if RunConvergedCGModel:
+    sim.export.lammps.BondSpline = True
     UseLammpsMD     		= True
     UseSim          		= False
     CalcPress       		= True
