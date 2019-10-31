@@ -493,7 +493,7 @@ for BondFunc in BondFuncs:
                     if sum(PBond.Knots) > 0.:
                         OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
                         PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
-                        #print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        PBond.EneSlopeInner = "{}kTperA".format(OuterSlope)
                         print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
                         print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
 
@@ -524,7 +524,7 @@ for BondFunc in BondFuncs:
                     if sum(PBond.Knots) > 0.:
                         OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
                         PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
-                        #print ('Estimated BondEneSlope = {}'.format(PBond.BondEneSlope))
+                        PBond.EneSlopeInner = "{}kTperA".format(OuterSlope)
                         print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
                         print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
 
