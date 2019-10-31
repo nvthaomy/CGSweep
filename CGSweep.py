@@ -54,7 +54,7 @@ StepsStride 		= 100
 #   2 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint (for using input of spline from zero centered)
 #   3 = spline bond + spline pair > relax knot constraints
 BondSplineMethod = 1 # 1 2 3
-Bcut = 40.
+Bcut = 20.
 NBondKnots = 15
 FixBondDist0 = False
 
