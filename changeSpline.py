@@ -7,12 +7,12 @@ import ast, re
 FFfile = 'CG_run_OptSpline_SplineBond_Final_ff.dat'
 PotName = 'Spline'
 #info of old knots
-cut0 = 20.
+cut0 = 10.
 #info of new knots
-cut = 20.
-N = 30
+cut = 10.
+N = 15
 
-OutFF = FFfile.split('ff.dat')[0] + 'SplineBond_cut{}_NKnots{}_ff.dat'.format(int(cut),N)
+OutFF = FFfile.split('ff.dat')[0] + 'cut{}_NKnots{}_ff.dat'.format(int(cut),N)
 #----------
 
 rs = np.linspace(0,cut,N)
