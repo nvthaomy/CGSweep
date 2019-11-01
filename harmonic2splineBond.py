@@ -35,7 +35,7 @@ def Harmonic2Spline(FFfile, BondName, cut, N):
     for r in rs:
     	vals.append(k*(r-r0)**2)
     s1 = spline.Spline(cut, knots)
-    s1.fitCoeff(rs, val)
+    s1.fitCoeff(rs, vals)
     knots = s1.knots.tolist()
     
     print('%i knots between r = 0 and %5.2f:' %(N,cut))
