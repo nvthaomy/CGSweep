@@ -1,5 +1,6 @@
 import numpy as np
 import ast, re
+import spline
 """Convert harmonic bond to spline and write out new ff file"""
 #--Inputs---
 FFfile = 'xp0.09_wrapped_CGMap_12_Spline_NoP_table2_ff.dat'
@@ -8,9 +9,6 @@ cut = 20.
 N = 20
 OutFF = FFfile.split('ff.dat')[0] + 'SplineBond_cut{}_NKnots{}_ff.dat'.format(int(cut),N)
 #----------
-
-rs = np.linspace(0,cut,N)
-knots = []
 
 f = open(FFfile, 'r')
 str = f.read()
@@ -34,8 +32,15 @@ k = bondDict['FConst']
 r0 = bondDict['Dist0']
 
 #convert to spline
+rs = np.linspace(0,cut,N) 
+knots = [0.] * N
+vals = []
 for r in rs:
-	knots.append(k*(r-r0)**2)
+	vals.append(k*(r-r0)**2)
+s1 = spline.Spline(cut, knots)
+s1.fitCoeff(rs, val)
+knots = s1.knots.tolist()
+
 print('%i knots between r = 0 and %5.2f:' %(N,cut))
 print(knots)
 print('Writing new forcefield file %s' %OutFF)
