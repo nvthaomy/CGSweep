@@ -151,15 +151,20 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
         PBond = sim.potential.PairSpline(Sys, Filter = sim.atomselect.BondPairs,
                                    Cut = Bcut, NKnot = NBondKnots, Label = 'Bond',BondEneSlope = "100kTperA")
         PBond.OuterBC = 2 #zero curvature for outer boundary 
+        PBond.InnerBC = 2
+        PBond.KnotsShiftable = True
         #using harmonic paramters to initiate knots
         if BondSplineMethod == 1: 
             k = HarmonicParam[0]
             r0 = HarmonicParam[1]
             rs = np.linspace(0,Bcut,NBondKnots)
-            Knots = []
+            Knots = [0.] * NBondKnots
+            s = spline.Spline(Bcut, NBondKnots)
+            vals = []
             for r in rs:
-                Knots.append(k * (r - r0)**2)
-            PBond.Knots = Knots              
+                vals.append(k * (r - r0)**2)
+            s.fitCoeff(rs, vals)
+            PBond.Knots = s.knots.tolist()
     else: 
         PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
                                Dist0 = PBondDist0, FConst = BondFConst, Label = 'Bond')
