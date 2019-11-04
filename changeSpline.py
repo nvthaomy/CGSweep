@@ -1,7 +1,7 @@
 import numpy as np
 import spline
 import ast, re
-"""Convert harmonic bond to spline and write out new ff file"""
+"""Convert to new knot values and  write out new ff file"""
 #--Inputs---
 
 FFfile = 'CG_run_OptSpline_SplineBond_Final_ff.dat'
