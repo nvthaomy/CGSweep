@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os, numpy as np, time, cPickle as pickle
 import sim, pickleTraj
 from spline2gaussians_leastsquares import GaussianBasisLSQ # This also requires spline to be imported
-import re         
+import re, spline         
 import sim.potential.base.potentialtypes as ptypes
 
 print sim
@@ -159,7 +159,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
             r0 = HarmonicParam[1]
             rs = np.linspace(0,Bcut,NBondKnots)
             Knots = [0.] * NBondKnots
-            s = spline.Spline(Bcut, NBondKnots)
+            s = spline.Spline(Bcut, Knots)
             vals = []
             for r in rs:
                 vals.append(k * (r - r0)**2)
