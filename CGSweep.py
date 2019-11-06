@@ -9,7 +9,7 @@ from shutil import copyfile
 #=================
 ''' USER-INPUT '''
 TrajFileDir = 'traj'
-CGModelScript = 'cgmodel_sweep_EE_splineBond.py'
+CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
 SpecialName     = 'SplineBond_NoP_2'
@@ -50,31 +50,31 @@ StepsStride 		= 100
 # BondSplineMethod:
 #   1 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint 
 #   2 = spline bond + spline pair > relax knot constraints
-BondSplineMethod = 1 # 1 2 3
-Bcut = 20.
-NBondKnots = 15
-FixBondDist0 = False
-PBondDist0 = 0.
-BondStyle = 'harmonic' #'harmonic' or 'spline'
-BondFConst = [1.e-2,1.,1.,1.,1.] #same dimension as TrajList
+BondSplineMethod    = 1
+Bcut                = 20.
+NBondKnots          = 15
+FixBondDist0        = False
+PBondDist0          = 0.
+BondStyle           = 'harmonic' #'harmonic' or 'spline'
+BondFConst          = [1.e-2,1.,1.,1.,1.] #same dimension as TrajList
 
-Cut = 15.
+Cut                 = 15.
 NonbondEneSlopeInit = '0.5kTperA'
-IncludeBondedAtoms = True
-RunSpline = True
-NSplineKnots = 30
-SplineOption = "'Option2'" #no longer need with new sim version
-SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
-FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
-RunGauss = False
+IncludeBondedAtoms  = True
+RunSpline           = True
+NSplineKnots        = 30
+SplineOption        = "'Option2'" #no longer need with new sim version
+SplineConstSlope    = True # NOT USED ANYMORE, Superseeded by SplineOption
+FitSpline           = False # Turns on Gaussian Fit of the spline for the initial guess
+RunGauss            = False
 NumberGaussianBasisSets = [10]
-GaussMethod = 1
+GaussMethod         = 1
 
 #External potential
-UConst = 0.0 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
-NPeriods = 1
-PlaneAxis = 0 #0 = x, 1 = y, 2 = z
-PlaneLoc = 0.
+UConst              = 0.0 #will need to adjust accrodingly depends on which mapping is used, set to 0 if don't want to apply external potential
+NPeriods            = 1
+PlaneAxis           = 0 #0 = x, 1 = y, 2 = z
+PlaneLoc            = 0.
 
 #------------------------------------------------------------------------------
 #Options for MD on converged CG model (MD steps are scaled by RunStepScaleList)
