@@ -72,37 +72,57 @@ GaussMethod 		= GaussMethod_DUMMY
 
 
 # Force-Field Settings
-Cut             = Cut_DUMMY
-FixBondDist0    = True
-BondFConst      = BondFConst_DUMMY
-PBondDist0      = 0. # For zero centered bonds set to 0.
+# BondSplineMethod:
+#   1 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint 
+#   2 = spline bond + spline pair > relax knot constraints
+BondSplineMethod    = BondSplineMethod_DUMMY
+Bcut                = Bcut_DUMMY
+NBondKnots          = NBondKnots_DUMMY
+FixBondDist0        = FixBondDist0_DUMMY
+BondFConst          = BondFConst_DUMMY
+PBondDist0          = PBondDist0_DUMMY # For zero centered bonds set to 0.
+BondStyle           = BondStyle_DUMMY #harmonic or spline
+SplineOption        = SplineOption_DUMMY #dont use anymore
+Cut                 = Cut_DUMMY
 IncludeBondedAtoms  = IncludeBondedAtoms_DUMMY
+NumberGaussians     = NumberGaussians_DUMMY
+RunSpline           = RunSpline_DUMMY
+NSplineKnots        = NSplineKnots_DUMMY
+SplineKnots         = SplineKnots_DUMMY
+
 UseLocalDensity     = False                                                                      
-CoordMin        = 0    
-CoordMax        = 350
-LDKnots         = 10
-NumberGaussians = NumberGaussians_DUMMY
-RunSpline       = RunSpline_DUMMY
-NSplineKnots    = NSplineKnots_DUMMY
-SplineKnots     = SplineKnots_DUMMY
+CoordMin            = 0    
+CoordMax            = 350
+LDKnots             = 10
 
 # Spline options
 #   Option1 = Constant slope 
 #   Option2 = Constant slope, then turn-off
 #   Option3 = Slope unconstrained
 
-SplineOption        = SplineOption_DUMMY 
+
 FitSpline           = FitSpline_DUMMY # Turns on Gaussian Fit of the spline for the initial guess
 SysLoadFF           = SysLoadFF_DUMMY # Use if you desire to seed a run with an already converged force-field.
 force_field_file    = force_field_file_DUMMY               
 UseWPenalty         = UseWPenalty_DUMMY
 WriteTraj           = True
 UseExpandedEnsemble = UseExpandedEnsemble_DUMMY
-RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
+
 WeightSysByMolecules = False # Option to weight E.E. systems by the number of molecules
 WeightSysByMoleculeRatios = True # Option to weight E.E. systems by the ratio of number of molecules
 
+RunOptimization = True
+RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
 ''' Bulk of Code '''
+def IsBondSpline(Sys):
+    """check if using spline for bonded potential and turn on spline bond in export/lammps.py"""
+    for P in Sys.ForceField:
+        if isinstance(P, sim.potential.PairSpline) and P.Filter.Bonded and P.Type == ptypes.PairPotential:
+            BondSpline = True
+        else:
+            BondSpline = False
+    return BondSpline
+
 def FreezeParameters(System_List, Pot, Parameters):
     # - Pot is the index of the potential with parameters to freeze.
     # - Parmaters is a list of parameters to freeze in Pot.
@@ -123,10 +143,18 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     
     ''' Add in potentials '''
     # Add PBond, Always assumed to be the first potential object!
-    PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
-                               Dist0 = PBondDist0, FConst = .1, Label = 'Bond')
-    
-    PBond.Param.Dist0.Min = 0.
+    if BondStyle == 'spline':
+        PBond = sim.potential.PairSpline(Sys, Filter = sim.atomselect.BondPairs,
+                                   Cut = Bcut, NKnot = NBondKnots, Label = 'Bond',BondEneSlope = "100kTperA")
+        #zero curvature for inner and outer boundaries
+        PBond.OuterBC = 2  
+        PBond.InnerBC = 2
+        PBond.KnotsShiftable = True
+        #using harmonic paramters to initiate knots
+    elif BondStyle == 'harmonic':
+        PBond = sim.potential.Bond(Sys, Filter = sim.atomselect.BondPairs,
+                               Dist0 = PBondDist0, FConst = BondFConst, Label = 'Bond')
+        PBond.Param.Dist0.Min = 0.
     FFList.extend([PBond])
     
     if GaussMethod in {4,5,6,7,8,9,10}:
@@ -277,6 +305,14 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     
     return Sys, [FFList, FFGaussians], NumberGaussians, opt
 
+def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0):
+    ''' Runs Srel Optimization '''
+    Optimizer.FilePrefix = (OptimizerPrefix)
+    if UseWPenalty == False:
+        Optimizer.RunConjugateGradient(MaxIter=MaxIter, SteepestIter=SteepestIter)
+    
+    elif UseWPenalty == True:
+        Optimizer.RunStages(StageCoefs = StageCoefs)
     
 ''' ************************************************************** '''
 ''' ********** Generate Systems & Optimizers for Srel ************ '''
@@ -382,17 +418,6 @@ for index, NMol in enumerate(NMol_List):
 ''' ******************************************* '''
 ''' ********** Run Srel Optimization ********** '''
 ''' ******************************************* '''
-RunOptimization = True
-
-def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0):
-    ''' Runs Srel Optimization '''
-    Optimizer.FilePrefix = (OptimizerPrefix)
-    if UseWPenalty == False:
-        Optimizer.RunConjugateGradient(MaxIter=MaxIter, SteepestIter=SteepestIter)
-    
-    elif UseWPenalty == True:
-        Optimizer.RunStages(StageCoefs = StageCoefs)
-
 
 if RunOptimization:
     # Just always using the OptimizeMultiTrajClass
@@ -415,36 +440,83 @@ if RunOptimization:
 
     Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
     
-    if RunSpline:
+    #check for spline bonded potential
+    counter = 0
+    IsBondSpline_temp_old = False
+    for Sys in SysList:
+        IsBondSpline_temp = IsBondSpline(Sys)
+        sim.export.lammps.BondSpline =  IsBondSpline(Sys)
+        if counter > 0 and IsBondSpline_temp != IsBondSpline_temp_old:
+            raise Exception('All systems must have the same form of bonded potential')
+        counter += 1
+        IsBondSpline_temp_old = IsBondSpline(Sys)
     
-        ''' Run Splone: There are 3 options currently.
-        
-            Option1: Run with a constant slope
-            Option2: Run with a constant slope, then turnoff
-            Option3: Run entirely without a constant slope
-        
-        '''
-        if SplineOption == 'Option1' or SplineOption == 'Option3':
-            OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
-        elif SplineOption == 'Option2':
-            OptimizerPrefix = ("{}_OptSpline_ConstSlope".format(SrelName))
-        else:
-            print('No spline option recognized or defined!')
-        
-        # opt. 
-        RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
-        
-        
-        if SplineOption == 'Option2':
-            for SysFF in SysFFList:
-                PSpline = SysFF[0][1]
-		print "Relaxing spline knot constraints" 
-                #PSpline.EneSlopeInner = None # Turn-off the EneSlopeInner
-                PSpline.RelaxKnotConstraints() #relax all spline constraints 
-            OptimizerPrefix = ("{}_OptSpline_Final".format(SrelName))
-            
-            # opt. 
+    if RunSpline:
+        if BondStyle == 'harmonic':
+            sim.export.lammps.BondSpline = False
+            Dict = SysFFList[0][0][0].ParamDict()
+            OptimizerPrefix =  ("{}_HarmonicBond_SplinePair_Final".format(SrelName))
             RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+
+        else:
+            sim.export.lammps.BondSpline = True
+            #spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint
+            if BondSplineMethod == 1:
+                OptimizerPrefix =  ("{}_SplineBond_FreezePair".format(SrelName))
+                for SysFF in SysFFList:
+                    PSpline = SysFF[0][1]
+                    PSpline.FreezeParam()
+                    PBond.RelaxKnotConstraints()
+                    #estimate outer slope
+                    if all(knot != 0. for knot in PBond.Knots):
+                        OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
+                        PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
+                        PBond.EneSlopeInner = "{}kTperA".format(OuterSlope)
+                        print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
+                        print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
+
+                    else:
+                        PBond.BondEneSlope = '30.kTperA'
+
+                RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                #unfreeze pair
+                for SysFF in SysFFList:
+                    PSpline = SysFF[0][1]
+                    PSpline.UnfreezeParam()
+                OptimizerPrefix =  ("{}_SplineBond_SplinePair".format(SrelName))
+                RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+                #relax knot constraints on bonded potential
+                for SysFF in SysFFList:
+                    PSpline = SysFF[0][1]
+                    PBond = SysFF[0][0]
+                    PBond.RelaxKnotConstraints()
+                OptimizerPrefix =  ("{}_SplineBond_SplinePair_Final".format(SrelName))
+                RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+            #spline bond + spline pair > relax knot constraints
+            elif BondSplineMethod == 2:
+                for SysFF in SysFFList:
+                    PBond = SysFF[0][0]
+                    PBond.RelaxKnotConstraints()
+                    #estimate outer slope
+                    if sum(PBond.Knots) > 0.:
+                        OuterSlope = (PBond.Knots[-1] - PBond.Knots[-2])/(Bcut/float(NBondKnots))
+                        PBond.EneSlopeOuter = "{}kTperA".format(OuterSlope)
+                        PBond.EneSlopeInner = "{}kTperA".format(OuterSlope)
+                        print ('Bond EneSlopeInner = {}'.format(PBond.EneSlopeInner))
+                        print ('Bond EneSlopeOuter = {}'.format(PBond.EneSlopeOuter))
+
+                    else:
+                        PBond.BondEneSlope = "30.kTperA"
+                OptimizerPrefix =  ("{}_SplineBond_SplinePair".format(SrelName))
+                RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
+   
+                #relax knot constraints
+                for SysFF in SysFFList:
+                    PSpline = SysFF[0][1]
+                    PBond = SysFF[0][0]
+                    PBond.RelaxKnotConstraints()
+                OptimizerPrefix =  ("{}_SplineBond_SplinePair_Final".format(SrelName))
+                RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)    
 
     else: # Run Gaussians optimization in stages
     # N.S. TODO: at somepoint could be useful to make this more robust using list so that an arbitrary number
@@ -885,44 +957,44 @@ if RunOptimization:
                         
         #*******************************************************************************************#             
         # End Option10
-# output final gaussian potential
-#if GaussMethod in {4,5,6,7,8,9,10} :
+#output final gaussian potential
+if GaussMethod in {4,5,6,7,8,9,10} and not RunSpline:
     
-#    r_max = Cut
-#    r_min = 0.00001
+    r_max = Cut
+    r_min = 0.00001
+   
+    rs = opt[4]
+    u_gauss = opt[2][NumberGaussians-1]
+    u_spline = opt[3]
+    distances = np.linspace(r_min,r_max,1000)
     
-#    rs = opt[4]
-#    u_gauss = opt[2][NumberGaussians-1]
-#    u_spline = opt[3]
-#    distances = np.linspace(r_min,r_max,1000)
+    u_pot_final = []
+    SysFF = SysFFList[0] # Just pick first 
+    print('\nForce-fields being used to calculate final Gaussian basis set.')
+    print(SysFF[1])
+    for rij in distances:
+        val_temp = 0
+        for FF in SysFF[1]:
+            val_temp += FF.Val(rij)
+        u_pot_final.append(val_temp)
     
-#    u_pot_final = []
-#    SysFF = SysFFList[0] # Just pick first 
-#    print('\nForce-fields being used to calculate final Gaussian basis set.')
-#    print(SysFF[1])
-#    for rij in distances:
-#        val_temp = 0
-#        for FF in SysFF[1]:
-#            val_temp += FF.Val(rij)
-#        u_pot_final.append(val_temp)
+    np.savetxt('u_pot_final.data',zip(distances,np.asarray(u_pot_final))) 
+   
+    Knots = [float(i) for i in re.split(' |,',SplineKnots) if len(i)>0]
     
-#    np.savetxt('u_pot_final.data',zip(distances,np.asarray(u_pot_final))) 
-    
-#    Knots = [float(i) for i in re.split(' |,',SplineKnots) if len(i)>0]
-    
-#    plt.figure()
-#    plt.plot(rs,u_spline,label="spline",linewidth = 3)
-#    plt.plot(rs,u_gauss,label="{}-Gaussian".format(NumberGaussians),linewidth = 3)
-#    plt.plot(distances,u_pot_final,label="Relaxed_{}-Gaussian".format(NumberGaussians),linewidth = 3)
-#    rs_knots = np.linspace(0,Cut,(NSplineKnots))
-#    plt.scatter(rs_knots,Knots,label = "spline knots",c='r')
-#    plt.ylim(min(np.min(u_spline),np.min(u_gauss), np.min(u_pot_final))*2,4)
-#    plt.xlim(0,Cut)
-#    plt.xlabel('r')
-#    plt.ylabel('u(r)')
-#    plt.legend(loc='best')
-#    plt.savefig('FinalGaussFit.pdf')  
-#    plt.close()
+    plt.figure()
+    plt.plot(rs,u_spline,label="spline",linewidth = 3)
+    plt.plot(rs,u_gauss,label="{}-Gaussian".format(NumberGaussians),linewidth = 3)
+    plt.plot(distances,u_pot_final,label="Relaxed_{}-Gaussian".format(NumberGaussians),linewidth = 3)
+    rs_knots = np.linspace(0,Cut,(NSplineKnots))
+    plt.scatter(rs_knots,Knots,label = "spline knots",c='r')
+    plt.ylim(min(np.min(u_spline),np.min(u_gauss), np.min(u_pot_final))*2,4)
+    plt.xlim(0,Cut)
+    plt.xlabel('r')
+    plt.ylabel('u(r)')
+    plt.legend(loc='best')
+    plt.savefig('FinalGaussFit.pdf')  
+    plt.close()
         
 ''' ***************************************************************** '''
 ''' Run the converged CG model to calculate Rg, Pressure, etc....     '''
@@ -999,6 +1071,9 @@ if RunConvergedCGModel:
     	    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
             Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
+            #check for spline bond
+            sim.export.lammps.BondSpline =  IsBondSpline(Sys)
+            
             if UseSim:
                 fobj = open('measures_{}.dat'.format(Sys_Index), 'w')
                 Sys.Measures.VerboseOutput(fobj = fobj, StepFreq=5000)                                                                                                                                           
@@ -1009,6 +1084,7 @@ if RunConvergedCGModel:
                 Int.Run(temp_StepsProd)
                 print "timing:", Int.TimeElapsed
                 print "\n"
+                
             
             if UseLammpsMD:
                 if OutputDCD:

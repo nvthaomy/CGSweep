@@ -50,13 +50,14 @@ StepsStride 		= 100
 #Options for pair potential
 #--------------------------
 # BondSplineMethod:
-#   1 = harmonic bond + spline pair >spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint
-#   2 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint (for using input of spline from zero centered)
-#   3 = spline bond + spline pair > relax knot constraints
+#   1 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint 
+#   2 = spline bond + spline pair > relax knot constraints
 BondSplineMethod = 1 # 1 2 3
 Bcut = 20.
 NBondKnots = 15
 FixBondDist0 = False
+PBondDist0 = 0.
+BondStyle = 'harmonic' #'harmonic' or 'spline'
 
 Cut = 15.
 IncludeBondedAtoms = True
@@ -95,7 +96,7 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
                           'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms',
-                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0']
+                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0','PBondDist0','BondStyle']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
@@ -103,7 +104,7 @@ CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThread
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
 		          UseSim, SplineOption, SplineKnots, BondFConst, TimeStep, IncludeBondedAtoms, 
-                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0]
+                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0,PBondDist0,BondStyle]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
