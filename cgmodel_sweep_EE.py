@@ -82,7 +82,9 @@ FixBondDist0        = FixBondDist0_DUMMY
 BondFConst          = BondFConst_DUMMY
 PBondDist0          = PBondDist0_DUMMY # For zero centered bonds set to 0.
 BondStyle           = BondStyle_DUMMY #harmonic or spline
+
 SplineOption        = SplineOption_DUMMY #dont use anymore
+NonbondEneSlopeInit = NonbondEneSlopeInit_DUMMY
 Cut                 = Cut_DUMMY
 IncludeBondedAtoms  = IncludeBondedAtoms_DUMMY
 NumberGaussians     = NumberGaussians_DUMMY
@@ -168,7 +170,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     if RunSpline:
         PSpline = sim.potential.PairSpline(Sys, Filter = Filter, Cut = Cut,
                                            NKnot = NSplineKnots, Label = 'Spline', 
-                                           NonbondEneSlopeInit = "0.25kTperA", BondEneSlope = "0.25kTperA")
+                                           NonbondEneSlopeInit = NonbondEneSlopeInit)
         if FitSpline:
             Max = 4.
             decay = 0.1

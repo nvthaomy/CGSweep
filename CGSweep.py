@@ -19,14 +19,12 @@ JobRunTime = '500:00:00'
 #----------------------
 #System related options
 #----------------------
-DOP = [36,36,36,36,36] 
+DOP = [36,36,36,36,36] #
 CG_Mappings = [9]
-#The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size
-#NMolList =  [4,15,50,100,150]   
+#The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size  
 NMolList = [15]
 TrajList = ['xp0.09_wrapped_test']
-SplineKnots = [['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03'],['3.9499e+00 , 2.1778e+00 , 4.0557e-01 , 1.8740e-01 , 4.7157e-02 , -7.6121e-02, -1.3100e-01, -1.5768e-01, 2.4402e-03 , 2.1258e-02 , 1.6626e-02 , 1.2492e-02 , 2.7170e-03 , 1.1932e-03 , -7.4819e-03']] # If fitting gaussians to splines
-BondFConst = [1.e-2,1.,1.,1.,1.]
+SplineKnots = [] # If fitting gaussians to splines
 Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
     
 #------------------------
@@ -41,7 +39,7 @@ TimeStep            = 0.001
 ScaleRuns 			= True
 RunStepScaleList 	= [3,2] #[3,3,2,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
 SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file 	= 'xp0.09_wrapped_CGMap_9_Spline_NoP_table2_SplineBond_ff.dat'
+force_field_file 	= ['xp0.09_wrapped_CGMap_9_Spline_NoP_table2_SplineBond_ff.dat'] #same dimension as TrajList
 StepsEquil 		  	= 5e5
 StepsProd 			= 5e6
 StepsStride 		= 100
@@ -58,12 +56,14 @@ NBondKnots = 15
 FixBondDist0 = False
 PBondDist0 = 0.
 BondStyle = 'harmonic' #'harmonic' or 'spline'
+BondFConst = [1.e-2,1.,1.,1.,1.] #same dimension as TrajList
 
 Cut = 15.
+NonbondEneSlopeInit = '0.5kTperA'
 IncludeBondedAtoms = True
 RunSpline = True
 NSplineKnots = 30
-SplineOption = "'Option2'" # Turns on Constant slope for first opt.; then shuts it off for final opt.
+SplineOption = "'Option2'" #no longer need with new sim version
 SplineConstSlope = True # NOT USED ANYMORE, Superseeded by SplineOption
 FitSpline = False # Turns on Gaussian Fit of the spline for the initial guess
 RunGauss = False
@@ -96,7 +96,7 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
                           'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms',
-                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0','PBondDist0','BondStyle']
+                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0','PBondDist0','BondStyle','NonbondEneSlopeInit']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
@@ -104,7 +104,7 @@ CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThread
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
 		          UseSim, SplineOption, SplineKnots, BondFConst, TimeStep, IncludeBondedAtoms, 
-                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0,PBondDist0,BondStyle]
+                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0,PBondDist0,BondStyle,NonbondEneSlopeInit]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -228,7 +228,7 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
                 param_value = "[]"
 
         if 'force_field_file' in param_name:
-            param_value = "'{}'".format(param_value)
+            param_value = "'{}'".format(param_value[TrajListInd])
         
         if 'SplineKnots' in param_name and 'N' not in param_name and RunGauss:
             print(param_name)
