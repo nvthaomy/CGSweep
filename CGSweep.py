@@ -12,7 +12,7 @@ TrajFileDir = 'traj'
 CGModelScript = 'cgmodel_sweep_EE.py'
 SubmitScriptName  = 'submit.sh'
 runwithtestscript = False
-SpecialName     = 'SplineBond_NoP_2'
+SpecialName     = 'test_npt'
 NumberThreads = 4
 JobRunTime = '500:00:00'
 
@@ -20,16 +20,17 @@ JobRunTime = '500:00:00'
 #System related options
 #----------------------
 DOP = [36,36,36,36,36] #
-CG_Mappings = [9]
+CG_Mappings = [6]
 #The following variables must be the list of list if doing Exp. Ens., list if not doing EE. All must have same size  
 NMolList = [15]
 TrajList = ['xp0.09_wrapped_test']
 SplineKnots = [] # If fitting gaussians to splines
-Pressure_List = [[1,1,1]] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
-    
+Pressure_List = [1.] #if using the pressure constraint, currently applying constraint on all systems in the expanded ensemble     
+Temp_List = [1.]    
 #------------------------
 #Options for optimization
 #------------------------
+ensemble = "'NPT'" # "'NVT'"
 UseWPenalty 		= False
 StageCoefs 			= [1.e-10, 1.e-4, 1.e-2, 1.e-1, 1., 10., 100., 1000.]
 UseOMM 				= False #use openMM to run optimization, but still use lammps for converged run
@@ -38,8 +39,9 @@ UseSim 	 			= False
 TimeStep            = 0.001
 ScaleRuns 			= True
 RunStepScaleList 	= [3,2] #[3,3,2,1,1] # scales the CG runtime for systems in the NMolList, i.e. run dilute system longer, same size as NMolList (list of list if doing expanded ensemble)
-SysLoadFF 			= True # to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
-force_field_file 	= ['xp0.09_wrapped_CGMap_9_Spline_NoP_table2_SplineBond_ff.dat'] #same dimension as TrajList
+SysLoadFF 			= False# to seed a run with an already converged force-field. if True, need to specify ff file below, ff file must be in TrajFileDir 
+force_field_file 	= ['xp0.09_wrapped_CGMap_6_Spline_SplineBond_NoP_1_Harmonic_ff.dat'] #same dimension as TrajList
+
 StepsEquil 		  	= 5e5
 StepsProd 			= 5e6
 StepsStride 		= 100
@@ -50,16 +52,17 @@ StepsStride 		= 100
 # BondSplineMethod:
 #   1 = spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint 
 #   2 = spline bond + spline pair > relax knot constraints
+# Spline bonded potential is currently only used with spline pair potential
 BondSplineMethod    = 1
 Bcut                = 20.
 NBondKnots          = 15
 FixBondDist0        = False
 PBondDist0          = 0.
-BondStyle           = 'harmonic' #'harmonic' or 'spline'
+BondStyle           = "'harmonic'" #"'harmonic'" or "'spline'"
 BondFConst          = [1.e-2,1.,1.,1.,1.] #same dimension as TrajList
 
 Cut                 = 15.
-NonbondEneSlopeInit = '0.5kTperA'
+NonbondEneSlopeInit = "'0.5kTperA'"
 IncludeBondedAtoms  = True
 RunSpline           = True
 NSplineKnots        = 30
@@ -96,7 +99,8 @@ CGModel_ParameterNames = ['Cut','NSplineKnots','ExpEnsemble','TrajList','Threads
                           'StepsStride','SplineConstSlope','FitSpline','SysLoadFF','force_field_file','UseWPenalty',
                           'Pressure_List','StageCoefs','NSteps_Min','NSteps_Equil','NSteps_Prod','WriteFreq',
                           'UseSim', 'SplineOption', 'SplineKnots', 'BondFConst', 'TimeStep','IncludeBondedAtoms',
-                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0','PBondDist0','BondStyle','NonbondEneSlopeInit']
+                          'NBondKnots','Bcut','BondSplineMethod','FixBondDist0','PBondDist0','BondStyle','NonbondEneSlopeInit',
+                          'Temp_List', 'ensemble']
                           
 CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThreads, NMolList,
                           RunStepScaleList, GaussMethod, ScaleRuns, DOP, UConst, NPeriods,
@@ -104,7 +108,8 @@ CGModel_Parameters     = [Cut, NSplineKnots, ExpEnsemble, TrajList, NumberThread
                           StepsStride, SplineConstSlope, FitSpline, SysLoadFF, force_field_file, UseWPenalty,
                           Pressure_List, StageCoefs, NSteps_Min, NSteps_Equil ,NSteps_Prod, WriteFreq,
 		          UseSim, SplineOption, SplineKnots, BondFConst, TimeStep, IncludeBondedAtoms, 
-                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0,PBondDist0,BondStyle,NonbondEneSlopeInit]
+                          NBondKnots, Bcut,BondSplineMethod, FixBondDist0,PBondDist0,BondStyle,NonbondEneSlopeInit,
+                          Temp_List, ensemble]
 
 
 ''' LESS USED DEFAULT OPTIONS'''
@@ -174,8 +179,9 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
                     if file.split(".lammpstrj")[0] in Traj:
                         #print(os.path.join(cwd,RunDirName,file))
                         copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
-                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
-                    copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
+                for ffFile in force_field_file:
+                    if ffFile in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
+                        copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     else:
         source = os.path.join(cwd,TrajFileDir)
         #print(cwd)
@@ -183,9 +189,10 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
         #print(os.path.join(cwd,RunDirName)) 
         copyfile(os.path.join(cwd,TrajFileDir,str(Traj+'.lammpstrj')),os.path.join(cwd,RunDirName,str(Traj+'.lammpstrj')))
         for subdir, dirs, files in os.walk(source):
-            for file in files:
-                if force_field_file in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
-                    copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
+            for ffFile in force_field_file:
+                for file in files:
+                    if ffFile in file and SysLoadFF: # Incase one wants to seed run with FF file just put it in this directory
+                        copyfile(os.path.join(cwd,TrajFileDir,file),os.path.join(cwd,RunDirName,file))
     #copy python modules
     files = ['spline.py','stats.py','stats_TrajParse.py','HistogramTools.py','spline2gaussians_leastsquares.py']
     for f in files:
@@ -219,14 +226,18 @@ def CreateCGModelDirectory(ExpEnsemble, RunDirName,Traj,cwd,CGModel,CGModel_Para
                 param_value = "[{}]".format(param_value[TrajListInd])
                 
         if 'Pressure_List' in param_name:
-            if UseWPenalty:	
+            if UseWPenalty or 'NPT' in ensemble:	
                 if ExpEnsemble:
                         param_value = str(param_value[TrajListInd])
                 else:
                         param_value = "[{}]".format(param_value[TrajListInd])
             else:
                 param_value = "[]"
-
+        if 'Temp_List' in param_name:
+            if ExpEnsemble:
+                    param_value = str(param_value[TrajListInd])
+            else:
+                    param_value = "[{}]".format(param_value[TrajListInd])
         if 'force_field_file' in param_name:
             param_value = "'{}'".format(param_value[TrajListInd])
         

@@ -6,7 +6,7 @@ import os, numpy as np, time, cPickle as pickle
 import sim, pickleTraj
 from spline2gaussians_leastsquares import GaussianBasisLSQ # This also requires spline to be imported
 import re         
-
+import sim.potential.base.potentialtypes as ptypes
 print sim
 
 #os.system('rm -rf pylib\n')
@@ -18,23 +18,24 @@ Traj_List = TrajList_DUMMY
 NMol_List = NMol_DUMMY
 DOP = DOP_DUMMY
 MappingRatio = CGMap_DUMMY
-Pressure_List = Pressure_List_DUMMY 
 StageCoefs = StageCoefs_DUMMY  #HERE may need to be more gradual for stability
 SrelName = "CG_run"
 UseLammps = UseLammps_DUMMY 
 UseOMM = UseOMM_DUMMY
 UseSim = UseSim_DUMMY
-
+Pressure_List = Pressure_List_DUMMY
+Temp_List = Temp_List_DUMMY
 
 # Default Simulation Package Settings
-sim.export.lammps.InnerCutoff = 0.000000001
-sim.export.lammps.NPairPotentialBins = 1000000
+sim.export.lammps.UseTable2 = True
+sim.export.lammps.InnerCutoff = 1.e-6
+sim.export.lammps.NPairPotentialBins = 1000
 sim.export.lammps.LammpsExec = 'lmp_omp'
 sim.export.lammps.UseLangevin = True
 sim.export.lammps.OMP_NumThread = Threads_DUMMY
-sim.export.lammps.TableInterpolationStyle = 'lookup' # More robust than spline for highly CG-ed systems
+sim.export.lammps.TableInterpolationStyle = 'spline' # More robust than spline for highly CG-ed systems
 sim.srel.optimizetrajlammps.LammpsDelTempFiles = False
-sim.srel.optimizetrajlammps.UseLangevin = True
+#sim.srel.optimizetrajlammps.UseLangevin = True
 
 sim.export.omm.platformName = 'OpenCL' # or 'OpenCL' or 'GPU' or 'CUDA'
 sim.export.omm.device = -1 #-1 is default, let openmm choose its own platform.
@@ -63,6 +64,7 @@ else:
 
 
 # MD Iterations
+ensemble = ensemble_DUMMY
 StepsEquil 			= StepsEquil_DUMMY
 StepsProd 			= StepsProd_DUMMY
 StepsStride 		= StepsStride_DUMMY
@@ -115,16 +117,10 @@ WeightSysByMoleculeRatios = True # Option to weight E.E. systems by the ratio of
 
 RunOptimization = True
 RunConvergedCGModel = True # Run the converged ff file at the end (calculates P and Rg statistics), 
-''' Bulk of Code '''
-def IsBondSpline(Sys):
-    """check if using spline for bonded potential and turn on spline bond in export/lammps.py"""
-    for P in Sys.ForceField:
-        if isinstance(P, sim.potential.PairSpline) and P.Filter.Bonded and P.Type == ptypes.PairPotential:
-            BondSpline = True
-        else:
-            BondSpline = False
-    return BondSpline
 
+if BondStyle == 'spline':
+    sim.export.lammps.BondSpline = True
+''' Bulk of Code '''
 def FreezeParameters(System_List, Pot, Parameters):
     # - Pot is the index of the potential with parameters to freeze.
     # - Parmaters is a list of parameters to freeze in Pot.
@@ -248,7 +244,7 @@ def CreateForceField(Sys, Cut, UseLocalDensity, CoordMin, CoordMax, LDKnots, Run
     return FFList, FFGaussians, NumberGaussians, opt
 
 def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensity, CoordMin, CoordMax,
-                    LDKnots, RunSpline, NSplineKnots, NumberGaussians):
+                    LDKnots, RunSpline, NSplineKnots, NumberGaussians, TempSet, PresSet):
     ''' Function that creates the system objects and returns them and a force-field object list. '''
     
     FFList = []
@@ -257,7 +253,6 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     NMon = NumberMonomers
     print ('NumberMonomers')
     print (NumberMonomers)
-    TempSet = 1.0
 
     AtomType = sim.chem.AtomType("A", Mass = 1., Charge = 0.0)
     MolType = sim.chem.MolType("M", [AtomType]*NMon)
@@ -294,17 +289,20 @@ def CreateSystem(Name, BoxL, NumberMolecules, NumberMonomers, Cut, UseLocalDensi
     #initial positions and velocities
     sim.system.positions.CubicLattice(Sys)
     sim.system.velocities.Canonical(Sys, Temp = 1.0)
-    Sys.TempSet = 1.0
-
+    Sys.TempSet = TempSet
+    Sys.PresSet = PresSet
     #configure integrator
     Int = Sys.Int
 
     Int.Method = Int.Methods.VVIntegrate        
-    Int.Method.Thermostat = Int.Method.ThermostatLangevin
     Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
-    Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
-    Sys.TempSet = TempSet
-    
+
+    if ensemble == 'NVT':
+        Int.Method.Thermostat = Int.Method.ThermostatLangevin
+        Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+    elif ensemble == 'NPT':
+        Int.Method.Thermostat = Int.Method.ThermostatNoseHoover
+        Int.Method.Barostat = Int.Method.BarostatMonteCarlo  
     return Sys, [FFList, FFGaussians], NumberGaussians, opt
 
 def RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0):
@@ -355,7 +353,7 @@ for index, NMol in enumerate(NMol_List):
       
     
     SysTemp, [FFList, FFGaussians], NumberGaussians, opt = CreateSystem(Name, BoxL, NMol, CGDOP, Cut, UseLocalDensity, 
-                                                        CoordMin, CoordMax, LDKnots, RunSpline, NSplineKnots, NumberGaussians)
+                                                        CoordMin, CoordMax, LDKnots, RunSpline, NSplineKnots, NumberGaussians,Temp_List[index], Pressure_List[index])
     
     SysFFList.append([FFList, FFGaussians])
 
@@ -442,26 +440,13 @@ if RunOptimization:
 
     Optimizer = sim.srel.OptimizeMultiTrajClass(OptList, Weights=Weights)
     
-    #check for spline bonded potential
-    counter = 0
-    IsBondSpline_temp_old = False
-    for Sys in SysList:
-        IsBondSpline_temp = IsBondSpline(Sys)
-        sim.export.lammps.BondSpline =  IsBondSpline(Sys)
-        if counter > 0 and IsBondSpline_temp != IsBondSpline_temp_old:
-            raise Exception('All systems must have the same form of bonded potential')
-        counter += 1
-        IsBondSpline_temp_old = IsBondSpline(Sys)
-    
     if RunSpline:
         if BondStyle == 'harmonic':
-            sim.export.lammps.BondSpline = False
             Dict = SysFFList[0][0][0].ParamDict()
             OptimizerPrefix =  ("{}_HarmonicBond_SplinePair_Final".format(SrelName))
             RunSrelOptimization(Optimizer, OptimizerPrefix, UseWPenalty, StageCoefs, MaxIter=None, SteepestIter=0)
 
         else:
-            sim.export.lammps.BondSpline = True
             #spline bond + freeze pair potential > spline bond + spline pair > relax spline bond slope constraint
             if BondSplineMethod == 1:
                 OptimizerPrefix =  ("{}_SplineBond_FreezePair".format(SrelName))
@@ -1044,16 +1029,23 @@ if RunConvergedCGModel:
             
             fileobject = open('measures_Sys.dat','w')
             
-            Sys.TempSet = 1.0
-            TempSet = 1.0
+            Sys.TempSet = Temp_List[index]
+            Sys.PresSet = Pressure_List[index]
 
             #initial positions and velocities
             sim.system.positions.CubicLatticeFill(Sys, Random = 0.1)
-            sim.system.velocities.Canonical(Sys, Temp = TempSet)
+            sim.system.velocities.Canonical(Sys, Temp = Sys.TempSet )
                         
             #configure integrator
             Int = Sys.Int
-            
+            Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
+            if ensemble == 'NVT':
+                Int.Method.Thermostat = Int.Method.ThermostatLangevin
+                Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
+            elif ensemble == 'NPT':
+                Int.Method.Thermostat = Int.Method.ThermostatNoseHoover
+                Int.Method.Barostat = Int.Method.BarostatMonteCarlo
+
             # MD iterations
             NStepsMin = NSteps_Min_DUMMY
             NStepsEquil = NSteps_Equil_DUMMY
@@ -1068,14 +1060,7 @@ if RunConvergedCGModel:
                 temp_StepsEquil  = NStepsEquil
                 temp_StepsProd   = NStepsProd
 
-            Int.Method = Int.Methods.VVIntegrate
-            Int.Method.Thermostat = Int.Method.ThermostatLangevin
-    	    Int.Method.TimeStep = TimeStep_DUMMY # note: reduced units
-            Int.Method.LangevinGamma = 1/(100*Int.Method.TimeStep)
 
-            #check for spline bond
-            sim.export.lammps.BondSpline =  IsBondSpline(Sys)
-            
             if UseSim:
                 fobj = open('measures_{}.dat'.format(Sys_Index), 'w')
                 Sys.Measures.VerboseOutput(fobj = fobj, StepFreq=5000)                                                                                                                                           
